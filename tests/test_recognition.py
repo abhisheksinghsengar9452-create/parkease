@@ -24,3 +24,15 @@ def test_combines_indian_plate_fragments_and_corrects_digit_lookalike():
     assert result.raw_text == 'UPI4 AB 1234'
     assert result.normalized_plate == 'UP14AB1234'
     assert result.requires_review
+
+
+def test_rejects_cng_sticker_and_selects_plate():
+    cng_box = [[10, 10], [50, 10], [50, 30], [10, 30]]
+    plate_box = [[10, 100], [150, 100], [150, 130], [10, 130]]
+    # Even though CNG has 99.9% confidence, it must choose the Indian plate
+    result = select_plate_candidate([
+        (cng_box, 'CNG', 0.999),
+        (plate_box, 'DL 04 CA 8821', 0.85)
+    ])
+    assert result.normalized_plate == 'DL04CA8821'
+    assert result.rto_info['state'] == 'Delhi NCT'
