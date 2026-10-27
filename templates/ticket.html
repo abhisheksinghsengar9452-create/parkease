@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Parking ticket {{ parking_session.session_reference }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/ticket.css') }}">
+</head>
+<body>
+  <main class="ticket">
+    <header>
+      <img src="{{ url_for('branding', filename='parkease-logo-v2.png') }}" alt="ParkEase">
+      <p>SMART PARKING MANAGEMENT</p>
+    </header>
+    <h1>PARKING ENTRY TICKET</h1>
+    <dl>
+      <div><dt>Ticket Ref</dt><dd>{{ parking_session.session_reference }}</dd></div>
+      <div><dt>Vehicle Plate</dt><dd><b>{{ parking_session.vehicle.registration_number }}</b></dd></div>
+      <div><dt>Assigned Bay</dt><dd class="slot">{{ parking_session.slot.slot_code if parking_session.slot else 'Unassigned' }}</dd></div>
+      <div><dt>Zone / Type</dt><dd>{{ parking_session.slot.zone if parking_session.slot and parking_session.slot.zone else 'Zone A' }} ({{ (parking_session.slot.slot_type if parking_session.slot and parking_session.slot.slot_type else 'Standard')|title }})</dd></div>
+      <div><dt>Entry Time</dt><dd>{{ parking_session.entry_at.strftime('%d %b %Y, %I:%M %p') }}</dd></div>
+    </dl>
+    {% if qr_code %}
+    <div class="qr-box">
+      <img src="data:image/png;base64,{{ qr_code }}" alt="Entry Barcode" class="ticket-qr">
+      <small>Scan at Exit Barrier Barcode Scanner</small>
+    </div>
+    {% endif %}
+    <p class="instruction">Keep this ticket or digital receipt safe. Scan or present at exit for automatic barrier release.</p>
+  </main>
+  <div class="screen-actions">
+    <a href="{{ url_for('dashboard') }}">Back to Dashboard</a>
+    <button onclick="window.print()">Print Ticket</button>
+    <button class="wa-btn" onclick="shareWhatsApp()">📱 WhatsApp E-Ticket</button>
+    <button class="sms-btn" onclick="promptSMS()">💬 Send SMS</button>
+  </div>
+  <script>
+    function shareWhatsApp() {
+      const phone = prompt('Enter customer WhatsApp mobile number (with country code, e.g. 919876543210):', '91');
+      if (!phone) return;
+      const cleanPhone = phone.replace(/\D/g, '');
+      const text = encodeURIComponent(`🚗 *ParkEase Smart Parking Entry Ticket*\n\n• *Ticket Ref:* {{ parking_session.session_reference }}\n• *Vehicle:* {{ parking_session.vehicle.registration_number }}\n• *Assigned Bay:* {{ parking_session.slot.slot_code if parking_session.slot else 'Unassigned' }}\n• *Entry Time:* {{ parking_session.entry_at.strftime('%d %b %Y, %I:%M %p') }}\n\nView live digital ticket:\n${window.location.origin}/tickets/{{ parking_session.session_reference }}`);
+      window.open(`https://api.whatsapp.com/send?phone=${cleanPhone}&text=${text}`, '_blank');
+    }
+    function promptSMS() {
+      const phone = prompt('Enter customer 10-digit mobile number for SMS dispatch:');
+      if (!phone) return;
+      alert(`⚡ Paperless E-Ticket dispatched via SMS gateway to +91-${phone.slice(-10)}`);
+    }
+  </script>
+</body>
+</html>

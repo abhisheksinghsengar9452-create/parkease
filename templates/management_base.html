@@ -1,0 +1,38 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ParkEase Management</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/management.css') }}">
+</head>
+<body>
+  <nav style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 24px;background:#091929;border-bottom:1px solid #14283b;">
+    <a href="/" style="font-weight:700;color:#00f0ff;text-decoration:none;">ParkEase</a>
+    <a href="/">Dashboard</a>
+    <a href="/anpr">ANPR Monitor</a>
+    <a href="/slots">Slots & Zones</a>
+    <a href="/reservations">Reservations</a>
+    {% if current_user and current_user.role == 'administrator' %}
+    <a href="/pricing">Pricing Rules</a>
+    {% endif %}
+    <a href="/billing">Billing</a>
+    <a href="/analytics">Analytics</a>
+    <a href="/settlement">Shift Settlement</a>
+    <a href="/vehicles">Vehicles</a>
+    {% if current_user and current_user.role == 'administrator' %}
+    <a href="/admin/users">Users</a>
+    {% endif %}
+    <form action="/logout" method="post" style="margin-left:auto;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button style="background:transparent;border:1px solid #334155;color:#94a3b8;padding:6px 12px;border-radius:6px;cursor:pointer;">Sign out</button>
+    </form>
+  </nav>
+  <main style="padding:24px;">
+    {% for category, message in get_flashed_messages(with_categories=true) %}
+    <p class="flash {{ category }}">{{ message }}</p>
+    {% endfor %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

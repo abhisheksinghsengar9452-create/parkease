@@ -1,0 +1,11 @@
+Flask>=3.1,<4.0
+Flask-SQLAlchemy>=3.1,<4.0
+PyMySQL>=1.1,<2.0
+razorpay>=1.4,<2.0
+pytest>=9.0,<10.0
+python-dotenv>=1.0,<2.0
+waitress>=3.0,<4.0
+# Phase 6 ANPR runtime
+opencv-python>=5.0,<6.0
+easyocr>=1.7,<2.0
+numpy>=2.0,<3.0

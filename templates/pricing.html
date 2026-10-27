@@ -1,0 +1,91 @@
+{% extends 'management_base.html' %}
+{% block content %}
+<header>
+  <p>TARIFF CONFIGURATION & REVENUE ENGINE</p>
+  <h1>Dynamic Pricing Rules</h1>
+</header>
+<section class="grid">
+  {% if current_user.role == 'administrator' %}
+  <form class="card" method="post" action="/pricing">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <h2>Create New Pricing Rule</h2>
+    <label>Rule Name
+      <input name="name" required placeholder="e.g. Peak Surge Rate, Weekend Special">
+    </label>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <label>Hourly Rate (₹)
+        <input name="hourly_rate" type="number" step="0.01" min="0" required placeholder="50.00">
+      </label>
+      <label>Minimum Charge (₹)
+        <input name="minimum_charge" type="number" step="0.01" min="0" value="0.00">
+      </label>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <label>Billing Increment (mins)
+        <input name="billing_increment_minutes" type="number" min="1" value="60">
+      </label>
+      <label>Grace Period (mins free)
+        <input name="grace_period_minutes" type="number" min="0" value="15">
+      </label>
+    </div>
+    <label>EV Fast-Charging Rate (₹/kWh)
+      <input name="ev_kwh_rate" type="number" step="0.01" min="0" value="15.00">
+    </label>
+    <label style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+      <input type="checkbox" name="set_active" value="true" checked>
+      <b>Set as Active Live Rate Immediately</b>
+    </label>
+    <button style="margin-top:12px;">Save & Deploy Rule</button>
+  </form>
+  {% endif %}
+
+  <section class="card">
+    <h2>Configured Rules ({{ rules|length }})</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Rule Name</th>
+          <th>Hourly Rate</th>
+          <th>Min Charge</th>
+          <th>Increment</th>
+          <th>Grace Period</th>
+          <th>EV Rate</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rules %}
+        <tr style="{% if r.is_active %}background:rgba(16,185,129,0.08);{% endif %}">
+          <td><b>{{ r.name }}</b></td>
+          <td class="mono">₹{{ r.hourly_rate }}</td>
+          <td class="mono">₹{{ r.minimum_charge }}</td>
+          <td>{{ r.billing_increment_minutes }}m</td>
+          <td>{{ r.grace_period_minutes or 15 }}m free</td>
+          <td class="mono">₹{{ r.ev_kwh_rate or '15.00' }}/kWh</td>
+          <td>
+            {% if r.is_active %}
+            <span class="status available" style="font-weight:700;">ACTIVE LIVE</span>
+            {% else %}
+            <span class="status unavailable">INACTIVE</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if not r.is_active and current_user.role == 'administrator' %}
+            <form method="post" action="/pricing/{{ r.id }}/activate" style="margin:0;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button type="submit" style="padding:6px 12px;font-size:11px;">Activate</button>
+            </form>
+            {% elif r.is_active %}
+            <small style="color:#10b981;font-weight:600;">Current</small>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8">No pricing rules defined.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</section>
+{% endblock %}

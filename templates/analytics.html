@@ -1,0 +1,74 @@
+{% extends 'management_base.html' %}
+{% block content %}
+<header>
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;">
+    <div>
+      <p>OPERATIONAL INTELLIGENCE & DEMAND FORECASTING</p>
+      <h1>Visual Analytics & Trend Charts</h1>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <a href="/api/export/sessions.csv" class="action-btn" style="background:#0c7180;color:#fff;padding:8px 14px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600;">📥 Sessions CSV</a>
+      <a href="/api/export/payments.csv" class="action-btn" style="background:#0284c7;color:#fff;padding:8px 14px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600;">📥 Revenue CSV</a>
+      <a href="/api/export/audit-logs.csv" class="action-btn" style="background:#059669;color:#fff;padding:8px 14px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600;">📥 Audit CSV</a>
+    </div>
+  </div>
+</header>
+
+<section class="grid" style="margin-top:20px;">
+  <!-- Peak Occupancy 24h Heatmap -->
+  <section class="card" style="grid-column:1/-1;">
+    <h2>24-Hour Gate Traffic & Peak Demand Curve</h2>
+    <p style="font-size:13px;color:#94a3b8;margin-bottom:16px;">Hourly check-in volume throughout the day (00:00 to 23:00):</p>
+    <div style="display:flex;align-items:flex-end;gap:8px;height:160px;padding:12px;background:#05111c;border-radius:8px;border:1px solid #14283b;overflow-x:auto;">
+      {% set max_cnt = hourly_counts|max %}
+      {% set divisor = max_cnt if max_cnt > 0 else 1 %}
+      {% for cnt in hourly_counts %}
+      {% set hr = loop.index0 %}
+      <div style="flex:1;min-width:26px;display:flex;flex-direction:column;align-items:center;height:100%;justify-content:flex-end;">
+        <span style="font-size:10px;font-weight:700;color:#00f0ff;margin-bottom:4px;">{{ cnt if cnt > 0 else '' }}</span>
+        <div style="width:100%;background:linear-gradient(to top, #0088cc, #00f0ff);border-radius:4px 4px 0 0;height:{{ (cnt * 100 / divisor)|round|int }}%;min-height:{{ 4 if cnt > 0 else 1 }}px;opacity:{{ 1 if cnt > 0 else 0.2 }};"></div>
+        <span style="font-size:9px;color:#64748b;margin-top:6px;">{{ '%02d'|format(hr) }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- 7-Day Revenue Trend -->
+  <section class="card">
+    <h2>7-Day Revenue Trend (₹)</h2>
+    <p style="font-size:13px;color:#94a3b8;margin-bottom:16px;">Daily settled billing over the past week:</p>
+    <div style="display:flex;align-items:flex-end;gap:16px;height:160px;padding:16px;background:#05111c;border-radius:8px;border:1px solid #14283b;">
+      {% set max_rev = revenue_by_day|max %}
+      {% set rev_div = max_rev if max_rev > 0 else 1 %}
+      {% for i in range(days|length) %}
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;height:100%;justify-content:flex-end;">
+        <span style="font-size:10px;font-weight:700;color:#10b981;margin-bottom:4px;">₹{{ "%.0f"|format(revenue_by_day[i]) }}</span>
+        <div style="width:100%;background:linear-gradient(to top, #059669, #10b981);border-radius:4px 4px 0 0;height:{{ (revenue_by_day[i] * 100 / rev_div)|round|int }}%;min-height:6px;"></div>
+        <span style="font-size:11px;color:#94a3b8;margin-top:6px;font-weight:600;">{{ days[i] }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- Vehicle Category Distribution -->
+  <section class="card">
+    <h2>Vehicle Fleet Classification</h2>
+    <p style="font-size:13px;color:#94a3b8;margin-bottom:16px;">Breakdown of registered and serviced vehicles:</p>
+    <div style="display:flex;flex-direction:column;gap:12px;margin-top:8px;">
+      {% for vtype, count in vehicle_types.items() %}
+      <div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
+          <span>
+            {% if vtype == 'EV' %}⚡ {{ vtype }} (Electric){% elif vtype == 'Commercial' %}🚚 Commercial{% elif vtype == 'SUV' %}🚙 SUV{% elif vtype == 'Two-Wheeler' %}🛵 Two-Wheeler{% else %}🚗 {{ vtype }}{% endif %}
+          </span>
+          <b style="color:#00f0ff;">{{ count }} units</b>
+        </div>
+        <div style="height:8px;background:#0b1928;border-radius:4px;overflow:hidden;">
+          <div style="height:100%;width:{{ ((count * 100) / 10)|round }}%;background:#00f0ff;border-radius:4px;"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+</section>
+{% endblock %}

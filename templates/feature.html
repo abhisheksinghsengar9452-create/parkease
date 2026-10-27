@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>{{ title }} · ParkEase</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/feature.css') }}">
+</head>
+<body>
+  <div class="glow one"></div><div class="glow two"></div>
+  <header>
+    <a class="brand" href="{{ url_for('dashboard') }}">
+      <img src="{{ url_for('branding', filename='parkease-logo-v2.png') }}" alt="ParkEase">
+    </a>
+    <nav>
+      <a href="{{ url_for('dashboard') }}">Dashboard</a>
+      <a href="{{ url_for('anpr') }}">ANPR</a>
+      <a href="{{ url_for('slots') }}">Slots</a>
+      <a href="{{ url_for('reservations') }}">Reservations</a>
+      {% if current_user.role == 'administrator' %}
+      <a href="{{ url_for('pricing') }}">Pricing</a>
+      {% endif %}
+      <a href="{{ url_for('analytics') }}">Analytics</a>
+      <a href="{{ url_for('settlement') }}">Settlement</a>
+      <a href="{{ url_for('vehicles') }}">Vehicles</a>
+      {% if current_user.role == 'administrator' %}
+      <a href="{{ url_for('users') }}">Users</a>
+      {% endif %}
+    </nav>
+    <form action="{{ url_for('logout') }}" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit">Sign out</button>
+    </form>
+  </header>
+
+  <main>
+    <a class="back" href="{{ url_for('dashboard') }}">← Back to command center</a>
+    <section class="hero">
+      <div>
+        <p class="eyebrow">OPERATIONS MODULE</p>
+        <h1>{{ title }}</h1>
+        <p>{{ description }}</p>
+      </div>
+      <span class="badge">LOCAL MYSQL CONNECTED</span>
+    </section>
+
+    {% for category, message in get_flashed_messages(with_categories=true) %}
+    <p class="flash {{ category }}">{{ message }}</p>
+    {% endfor %}
+
+    {% if upload %}
+    <section class="card upload">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+        <h2>ANPR Gate Optical Scanner</h2>
+        <div style="display:flex;gap:8px;">
+          <button type="button" id="btnToggleCam" style="background:#0c7180;color:#fff;border:0;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">📹 Start Live Camera Feed</button>
+          <button type="button" onclick="document.querySelector('#lostTicketDialog').showModal()" style="background:#475569;color:#fff;border:0;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">🎫 Lost Ticket Dispute</button>
+        </div>
+      </div>
+
+      <!-- Live Webcam / Video Feed Area with Bounding Box Overlay -->
+      <div id="liveFeedContainer" style="display:none;position:relative;margin:16px 0;background:#050f18;border-radius:8px;overflow:hidden;border:1px solid #14283b;">
+        <video id="liveVideo" autoplay playsinline muted style="width:100%;max-height:360px;object-fit:cover;display:block;"></video>
+        <canvas id="overlayCanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;"></canvas>
+        <div style="padding:10px;display:flex;justify-content:space-between;align-items:center;background:rgba(5,15,24,0.85);backdrop-filter:blur(6px);">
+          <span style="font-size:11px;color:#00f0ff;font-weight:700;">🟢 LIVE 1080P OPTICAL STREAM ACTIVE</span>
+          <button type="button" id="btnCaptureOCR" style="background:#00f0ff;color:#050c14;border:0;padding:6px 14px;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer;">⚡ Snap Frame & Scan</button>
+        </div>
+      </div>
+
+      <p style="margin-top:14px;">Select the vehicle direction, then snap a webcam frame, upload an image, or enter the registration number.</p>
+      <form action="{{ url_for('anpr') }}" method="post" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <fieldset class="gate-mode">
+          <legend>Vehicle direction</legend>
+          <label>
+            <input type="radio" name="direction" value="entry" {% if direction != 'exit' %}checked{% endif %}>
+            IN — allocate bay & generate ticket
+          </label>
+          <label>
+            <input type="radio" name="direction" value="exit" {% if direction == 'exit' %}checked{% endif %}>
+            EXIT — find session & calculate fee
+          </label>
+        </fieldset>
+
+        <label>Camera Image (JPEG / PNG)
+          <input name="image" id="fileInput" type="file" accept="image/jpeg,image/png">
+        </label>
+        <label>Or Manual Registration Plate
+          <input name="manual_plate" id="manualPlateInput" placeholder="e.g. DL04CA8821, 22BH1234AA">
+        </label>
+        <button type="submit">Process Gate Action</button>
+      </form>
+
+      {% if anpr_result %}
+      <div class="scan-result" style="margin-top:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+          <span class="plate" style="font-size:24px;">{{ anpr_result.plate }}</span>
+          <span style="color:#10b981;font-weight:700;font-size:16px;">{{ '%.1f'|format(anpr_result.confidence) }}% confidence</span>
+        </div>
+        <small style="display:block;margin:6px 0;">Raw OCR: {{ anpr_result.raw_text or '—' }}{% if anpr_result.requires_review %} · <b style="color:#f59e0b;">Manual Review Required</b>{% endif %}</small>
+
+        <!-- Indian RTO Decoder Information Card -->
+        {% if anpr_result.rto and anpr_result.rto.is_valid %}
+        <div style="background:#061422;border:1px solid #14283b;padding:14px;border-radius:8px;margin:12px 0;">
+          <b style="color:#00f0ff;font-size:13px;">🇮🇳 Indian RTO State & Series Decoder</b>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:10px;margin-top:8px;font-size:12px;">
+            <div><span style="color:#64748b;">Jurisdiction:</span> <b style="display:block;">{{ anpr_result.rto.state }}</b></div>
+            <div><span style="color:#64748b;">Registering Office:</span> <b style="display:block;">{{ anpr_result.rto.rto_office }}</b></div>
+            <div><span style="color:#64748b;">Classification:</span> <b style="display:block;">{{ anpr_result.rto.category }}</b></div>
+            <div><span style="color:#64748b;">Plate HSRP:</span> <b style="display:block;color:#38bdf8;">{{ anpr_result.rto.plate_type }}</b></div>
+          </div>
+        </div>
+        {% endif %}
+
+        {% if direction == 'exit' and exit_quote %}
+        <div class="exit-summary" style="margin-top:14px;">
+          <b>EXIT SESSION {{ exit_quote.session_reference }}</b>
+          <span>Location: {{ exit_quote.slot }} · {{ exit_quote.billable_minutes }} billable minutes</span>
+          {% if exit_quote.is_grace %}
+          <span style="color:#10b981;font-weight:700;">✓ Exit within 15-minute free grace period!</span>
+          {% endif %}
+          <strong>Total Due: ₹{{ exit_quote.amount }}</strong>
+        </div>
+        <form class="ticket-form" action="{{ url_for('complete_anpr_exit') }}" method="post" style="margin-top:14px;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="session_reference" value="{{ exit_quote.session_reference }}">
+          <label>EV Units Charged (optional kWh)
+            <input name="ev_kwh" type="number" step="0.1" value="0.0" placeholder="0.0 kWh">
+          </label>
+          <button type="submit">Confirm Cash / UPI Payment & Open Barrier</button>
+        </form>
+        {% elif direction != 'exit' %}
+        <form class="ticket-form" action="{{ url_for('issue_anpr_ticket') }}" method="post" style="margin-top:14px;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <label>Confirmed Vehicle Registration
+            <input name="plate" value="{{ anpr_result.plate if anpr_result.plate != 'No valid plate found' else '' }}" required>
+          </label>
+          <button type="submit">
+            {% if anpr_result.requires_review %}Confirm Plate & Print Ticket{% else %}Generate IN Ticket & Open Barrier{% endif %}
+          </button>
+        </form>
+        {% endif %}
+      </div>
+      {% endif %}
+    </section>
+
+    <!-- Human-in-the-Loop Review Queue -->
+    {% if pending_reviews %}
+    <section class="card" style="margin-top:24px;">
+      <h2>Pending Human Review Queue ({{ pending_reviews|length }})</h2>
+      <p style="font-size:12px;color:#94a3b8;margin-bottom:12px;">Low-confidence (<85%) or ambiguous OCR scans awaiting operator review:</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Ref</th>
+            <th>Raw OCR Text</th>
+            <th>Confidence</th>
+            <th>Gate</th>
+            <th>Time</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for rev in pending_reviews %}
+          <tr id="reviewRow_{{ rev.id }}">
+            <td class="mono">#{{ rev.id }}</td>
+            <td class="mono"><b>{{ rev.recognized_text or '—' }}</b></td>
+            <td><span style="color:#f59e0b;font-weight:700;">{{ rev.confidence or 0 }}%</span></td>
+            <td>{{ rev.direction|upper }}</td>
+            <td>{{ rev.recognized_at.strftime('%H:%M:%S') }}</td>
+            <td>
+              <div style="display:flex;gap:6px;align-items:center;">
+                <input id="corr_{{ rev.id }}" value="{{ rev.normalized_text or '' }}" placeholder="Correct plate" style="padding:4px 8px;font-size:12px;max-width:130px;">
+                <button type="button" onclick="reviewScan({{ rev.id }}, 'accept')" style="padding:4px 8px;font-size:11px;background:#10b981;border:0;color:#050c14;border-radius:4px;cursor:pointer;font-weight:700;">Accept</button>
+                <button type="button" onclick="reviewScan({{ rev.id }}, 'correct')" style="padding:4px 8px;font-size:11px;background:#0284c7;border:0;color:#fff;border-radius:4px;cursor:pointer;font-weight:600;">Correct</button>
+                <button type="button" onclick="reviewScan({{ rev.id }}, 'reject')" style="padding:4px 8px;font-size:11px;background:#ef4444;border:0;color:#fff;border-radius:4px;cursor:pointer;font-weight:600;">Reject</button>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+    {% endif %}
+
+    <!-- Lost Ticket Dispute Modal -->
+    <dialog id="lostTicketDialog" style="background:#091b2c;color:#fff;border:1px solid #1e3a5f;border-radius:12px;padding:24px;max-width:440px;box-shadow:0 20px 40px rgba(0,0,0,0.5);">
+      <h3 style="margin-top:0;">🎫 Lost Ticket Dispute Resolution</h3>
+      <p style="font-size:13px;color:#94a3b8;">Resolve a lost physical ticket dispute and record audit penalty:</p>
+      <div style="margin:12px 0;">
+        <label style="display:block;margin-bottom:8px;font-size:12px;color:#94a3b8;">Vehicle Registration (if known)
+          <input id="lostPlate" placeholder="e.g. DL01AB1234" style="width:100%;padding:8px;margin-top:4px;background:#050f18;border:1px solid #1e3a5f;color:#fff;border-radius:6px;">
+        </label>
+        <label style="display:block;margin-bottom:8px;font-size:12px;color:#94a3b8;">Standard Flat Lost Penalty (₹)
+          <input id="lostFee" type="number" value="250.00" style="width:100%;padding:8px;margin-top:4px;background:#050f18;border:1px solid #1e3a5f;color:#fff;border-radius:6px;">
+        </label>
+        <label style="display:block;margin-bottom:8px;font-size:12px;color:#94a3b8;">Resolution Notes
+          <input id="lostReason" value="Customer misplaced physical entry ticket" style="width:100%;padding:8px;margin-top:4px;background:#050f18;border:1px solid #1e3a5f;color:#fff;border-radius:6px;">
+        </label>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:16px;">
+        <button type="button" onclick="resolveLostTicket()" style="background:#10b981;color:#050c14;font-weight:700;border:0;padding:10px 16px;border-radius:6px;cursor:pointer;">Confirm & Release Barrier</button>
+        <button type="button" onclick="document.querySelector('#lostTicketDialog').close()" style="background:#334155;color:#fff;border:0;padding:10px 16px;border-radius:6px;cursor:pointer;">Cancel</button>
+      </div>
+    </dialog>
+    {% endif %}
+
+    {% if action_url %}
+    <p><a class="action" href="{{ action_url }}">{{ action_label }} →</a></p>
+    {% endif %}
+
+    {% if columns %}
+    <section class="card">
+      <div class="table-head">
+        <h2>Current records</h2>
+        <span>{{ rows|length }} shown</span>
+      </div>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr>
+              {% for column in columns %}<th>{{ column }}</th>{% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rows %}
+            <tr>
+              {% for value in row %}<td>{{ value }}</td>{% endfor %}
+            </tr>
+            {% else %}
+            <tr><td class="empty" colspan="{{ columns|length }}">No records available yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+    {% endif %}
+  </main>
+
+  <script>
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+    // ==========================================
+    // Live Webcam & Bounding Box Visualizer
+    // ==========================================
+    const btnToggleCam = document.querySelector('#btnToggleCam');
+    const liveContainer = document.querySelector('#liveFeedContainer');
+    const liveVideo = document.querySelector('#liveVideo');
+    const overlayCanvas = document.querySelector('#overlayCanvas');
+    const btnCaptureOCR = document.querySelector('#btnCaptureOCR');
+    let mediaStream = null;
+
+    btnToggleCam?.addEventListener('click', async () => {
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(t => t.stop());
+        mediaStream = null;
+        liveContainer.style.display = 'none';
+        btnToggleCam.textContent = '📹 Start Live Camera Feed';
+      } else {
+        try {
+          mediaStream = await navigator.mediaDevices.getUserMedia({video: {width: 1280, height: 720}});
+          liveVideo.srcObject = mediaStream;
+          liveContainer.style.display = 'block';
+          btnToggleCam.textContent = '⏹ Stop Camera Feed';
+        } catch (err) {
+          alert('Could not access camera: ' + err.message);
+        }
+      }
+    });
+
+    btnCaptureOCR?.addEventListener('click', async () => {
+      if (!liveVideo.videoWidth) return;
+      const snapCanvas = document.createElement('canvas');
+      snapCanvas.width = liveVideo.videoWidth;
+      snapCanvas.height = liveVideo.videoHeight;
+      const ctx = snapCanvas.getContext('2d');
+      ctx.drawImage(liveVideo, 0, 0);
+
+      snapCanvas.toBlob(async blob => {
+        const formData = new FormData();
+        formData.append('image', blob, 'camera_capture.jpg');
+        formData.append('csrf_token', csrfToken);
+        btnCaptureOCR.disabled = true;
+        btnCaptureOCR.textContent = 'Scanning...';
+        try {
+          const res = await fetch('/api/recognition/images', {
+            method: 'POST',
+            headers: {'X-CSRFToken': csrfToken},
+            body: formData
+          });
+          const data = await res.json();
+          if (data.plate) {
+            document.querySelector('#manualPlateInput').value = data.plate;
+            // Draw green bounding box on overlay canvas!
+            overlayCanvas.width = liveVideo.clientWidth;
+            overlayCanvas.height = liveVideo.clientHeight;
+            const octx = overlayCanvas.getContext('2d');
+            octx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+            if (data.bounding_box) {
+              const [bx, by, bw, bh] = data.bounding_box;
+              const scaleX = overlayCanvas.width / liveVideo.videoWidth;
+              const scaleY = overlayCanvas.height / liveVideo.videoHeight;
+              octx.strokeStyle = '#10b981';
+              octx.lineWidth = 4;
+              octx.strokeRect(bx * scaleX, by * scaleY, bw * scaleX, bh * scaleY);
+              octx.fillStyle = '#10b981';
+              octx.font = 'bold 16px monospace';
+              octx.fillText(`${data.plate} (${data.confidence}%)`, bx * scaleX, Math.max(20, (by * scaleY) - 8));
+            }
+          }
+        } catch (e) {
+          alert('Scan error: ' + e.message);
+        } finally {
+          btnCaptureOCR.disabled = false;
+          btnCaptureOCR.textContent = '⚡ Snap Frame & Scan';
+        }
+      }, 'image/jpeg');
+    });
+
+    // ==========================================
+    // Human-in-the-Loop Review Queue Action
+    // ==========================================
+    async function reviewScan(id, action) {
+      const corrected = document.querySelector(`#corr_${id}`)?.value.trim() || '';
+      try {
+        const res = await fetch(`/api/recognition/review/${id}`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
+          body: JSON.stringify({action, corrected_plate: corrected})
+        });
+        const payload = await res.json();
+        if (res.ok) {
+          const row = document.querySelector(`#reviewRow_${id}`);
+          if (row) row.style.opacity = '0.3';
+          if (action !== 'reject') {
+            document.querySelector('#manualPlateInput').value = payload.plate;
+          }
+        } else {
+          alert(payload.error || 'Review submission failed.');
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    // ==========================================
+    // Lost Ticket Resolution
+    // ==========================================
+    async function resolveLostTicket() {
+      const plate = document.querySelector('#lostPlate').value.trim();
+      const penalty = document.querySelector('#lostFee').value.trim();
+      const reason = document.querySelector('#lostReason').value.trim();
+      try {
+        const res = await fetch('/api/tickets/lost-resolution', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
+          body: JSON.stringify({plate, penalty_amount: penalty, reason})
+        });
+        const payload = await res.json();
+        if (res.ok) {
+          alert(`✓ ${payload.message}`);
+          window.location.reload();
+        } else {
+          alert(payload.error || 'Could not resolve lost ticket.');
+        }
+      } catch (e) {
+        alert(e.message);
+      }
+    }
+  </script>
+</body>
+</html>

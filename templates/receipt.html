@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Exit receipt {{ receipt.receipt_number }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/ticket.css') }}">
+</head>
+<body>
+  <main class="ticket">
+    <header>
+      <img src="{{ url_for('branding', filename='parkease-logo-v2.png') }}" alt="ParkEase">
+      <p>SMART PARKING MANAGEMENT</p>
+    </header>
+    <h1>EXIT PAYMENT RECEIPT</h1>
+    <dl>
+      <div><dt>Receipt Ref</dt><dd>{{ receipt.receipt_number }}</dd></div>
+      <div><dt>Session Ref</dt><dd>{{ receipt.session_reference }}</dd></div>
+      <div><dt>Amount Paid</dt><dd class="slot">₹{{ receipt.amount }}</dd></div>
+      <div><dt>Payment Status</dt><dd><b style="color:#059669;">{{ receipt.status|upper }}</b></dd></div>
+    </dl>
+    {% if qr_code %}
+    <div class="qr-box">
+      <img src="data:image/png;base64,{{ qr_code }}" alt="Receipt QR" class="ticket-qr">
+      <small>Tax & Audit Verification QR</small>
+    </div>
+    {% endif %}
+    <p class="instruction">Payment verified. The assigned bay has been released and exit barrier opened.</p>
+  </main>
+  <div class="screen-actions">
+    <a href="{{ url_for('dashboard') }}">Back to Dashboard</a>
+    <button onclick="window.print()">Print Receipt</button>
+    <button class="wa-btn" onclick="shareReceiptWhatsApp()">📱 WhatsApp Receipt</button>
+  </div>
+  <script>
+    function shareReceiptWhatsApp() {
+      const phone = prompt('Enter customer WhatsApp mobile number (with country code, e.g. 919876543210):', '91');
+      if (!phone) return;
+      const cleanPhone = phone.replace(/\D/g, '');
+      const text = encodeURIComponent(`🧾 *ParkEase Parking Payment Receipt*\n\n• *Receipt:* {{ receipt.receipt_number }}\n• *Session:* {{ receipt.session_reference }}\n• *Amount Paid:* ₹{{ receipt.amount }}\n• *Status:* Confirmed / Paid\n\nThank you for parking with ParkEase!`);
+      window.open(`https://api.whatsapp.com/send?phone=${cleanPhone}&text=${text}`, '_blank');
+    }
+  </script>
+</body>
+</html>

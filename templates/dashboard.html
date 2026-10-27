@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>ParkEase — Smart Parking Operations</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/interactions.css') }}">
+</head>
+<body>
+  <div class="aurora a1"></div><div class="aurora a2"></div>
+  <aside class="sidebar glass" id="sidebar">
+    <button class="brand" id="sidebarToggle" aria-label="Toggle navigation"><img src="{{ url_for('branding', filename='parkease-logo-v2.png') }}" alt="ParkEase"></button>
+    <nav>
+      <a class="active" href="{{ url_for('dashboard') }}"><span>📊</span><b>Dashboard</b></a>
+      <a href="{{ url_for('lot_map') }}"><span>🗺️</span><b>Live 3D Lot Map</b></a>
+      <a href="{{ url_for('anpr') }}"><span>📷</span><b>ANPR Gate Monitor</b></a>
+      <a href="{{ url_for('slots') }}"><span>🅿️</span><b>Slot Management</b></a>
+      <a href="{{ url_for('reservations') }}"><span>📅</span><b>Reservations</b></a>
+      {% if current_user.role == 'administrator' %}
+      <a href="{{ url_for('pricing') }}"><span>🏷️</span><b>Pricing Engine</b></a>
+      {% endif %}
+      <a href="{{ url_for('billing') }}"><span>💳</span><b>Billing & Sessions</b></a>
+      <a href="{{ url_for('analytics') }}"><span>📈</span><b>Analytics & Trends</b></a>
+      <a href="{{ url_for('settlement') }}"><span>🧾</span><b>Shift Settlement</b></a>
+      <a href="{{ url_for('hardware') }}"><span>⚡</span><b>IoT Hardware Status</b></a>
+      <a href="{{ url_for('audit_logs') }}"><span>📋</span><b>Audit Logs</b></a>
+      {% if current_user.role == 'administrator' %}
+      <a href="{{ url_for('users') }}"><span>👥</span><b>Role/User Admin</b></a>
+      {% endif %}
+    </nav>
+    <div class="operator">
+      <span class="avatar">{{ current_user.display_name[:2]|upper }}</span>
+      <div><b>{{ current_user.display_name }}</b><small>{{ current_user.role|title }}</small></div>
+      <i class="online-dot" title="Online"></i>
+    </div>
+  </aside>
+  <main>
+    <header>
+      <div><p class="eyebrow">OPERATIONS COMMAND CENTER</p><h1>Welcome back, <span>{{ current_user.display_name }}.</span></h1></div>
+      <div class="header-actions">
+        <span class="live"><i></i> SYSTEM ACTIVE</span>
+        <span id="clock"></span>
+        <button class="icon-btn search-trigger" id="searchBtn" type="button" title="Quick Search (Ctrl+K)">🔍</button>
+        <button class="icon-btn notif-btn" id="notifBtn" type="button" title="System Notifications">🔔<span class="notif-badge" id="notifBadge"></span></button>
+        <form action="{{ url_for('logout') }}" method="post">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button class="icon-btn signout" type="submit" aria-label="Sign out" title="Sign Out">Sign Out</button>
+        </form>
+      </div>
+    </header>
+    <section class="metrics" id="metrics"></section>
+    <section class="workspace">
+      <article class="lot-panel glass" id="lot">
+        <div class="panel-title">
+          <div><p class="eyebrow">REAL-TIME VISUALIZATION</p><h2>Live 3D Parking Lot</h2></div>
+          <div class="legend"><span><i class="available"></i>Available</span><span><i class="occupied"></i>Occupied</span><span><i class="maintenance"></i>Maintenance</span></div>
+        </div>
+        <div id="scene" aria-label="Interactive 3D parking lot"></div>
+        <div class="lot-hud" id="lotHud">
+          <div class="cam-presets">
+            <span class="hud-label">CAMERA:</span>
+            <button class="hud-btn active" data-cam="iso" type="button">3D View</button>
+            <button class="hud-btn" data-cam="top" type="button">Top View</button>
+            <button class="hud-btn" data-cam="gate" type="button">Gate Cam</button>
+            <button class="hud-btn" data-cam="reset" type="button">Reset</button>
+          </div>
+          <div class="zone-pills" id="zonePills">
+            <span class="zone-chip"><b id="zoneStatus">Zone A · 5 Bays Total</b></span>
+          </div>
+          <div class="selected-bay-hud" id="selectedBayHud">
+            <span class="bay-chip"><i class="dot available" id="hudDot"></i> <b id="hudBayCode">Click any bay</b></span>
+            <span id="hudBayStatus" class="hud-status">Interactive 3D Bay Details</span>
+            <div class="hud-actions" id="hudBayActions" style="display:none;">
+              <a class="hud-action-btn" id="hudExitBtn" href="{{ url_for('anpr') }}">Process Exit →</a>
+            </div>
+          </div>
+        </div>
+      </article>
+      <aside class="monitor" id="anpr">
+        <article class="glass monitor-card">
+          <div class="panel-title">
+            <div><p class="eyebrow">ENTRY GATE 01</p><h2>Live ANPR Monitor</h2></div>
+            <span class="live" id="cameraStatusBadge"><i></i>ONLINE · 1080P</span>
+          </div>
+          <div class="camera">
+            <div class="scan-line"></div>
+            <span class="target t1"></span>
+            <span class="target t2"></span>
+            <p>OPENCV ANPR · GATE-01 CAM</p>
+            <div class="plate-overlay" id="cameraPlate">Scanning...</div>
+          </div>
+          <div class="anpr-result">
+            <span class="plate" id="anprPlate">Scanning...</span>
+            <div><b id="confidence">96.8%</b><small id="anprSub">Active Plate Match</small></div>
+          </div>
+          <div class="progress"><span id="confidenceBar" style="width: 96.8%;"></span></div>
+          <div class="quick-gate-scan">
+            <div class="override-wrap">
+              <input id="anprQuickPlate" placeholder="Registration number (e.g. DL01AB1234)">
+              <button class="primary full" id="btnInstantScan" type="button">Check-In & Allocate Bay</button>
+            </div>
+            <div class="camera-triggers">
+              <button class="ghost-btn" id="btnSimulateTrigger" type="button">Trigger Gate Sensor Scan</button>
+            </div>
+          </div>
+          <a class="secondary full anpr-link" href="{{ url_for('anpr') }}">Open Full ANPR Gate Studio →</a>
+        </article>
+        <article class="glass monitor-card hardware" id="hardware">
+          <div class="panel-title">
+            <div><p class="eyebrow">DEVICE TELEMETRY</p><h2>IoT Hardware</h2></div>
+            <button class="more" id="deviceMoreBtn" type="button" title="Device Connection Guide">Info</button>
+          </div>
+          <div id="devices"></div>
+          <div class="barrier-actions">
+            <button class="safe-action barrier-btn" data-barrier="entry" data-action="open" type="button">Open Entry Barrier</button>
+            <button class="safe-action barrier-btn" data-barrier="exit" data-action="open" type="button">Open Exit Barrier</button>
+            <button class="safe-action barrier-btn close-btn" data-barrier="entry" data-action="close" type="button">Close Barrier</button>
+          </div>
+        </article>
+      </aside>
+    </section>
+    <section class="sessions glass" id="sessions">
+      <div class="panel-title">
+        <div><p class="eyebrow">ACTIVE OPERATIONS</p><h2>Live Sessions & Billing</h2></div>
+        <div class="session-head-actions">
+          <button class="outline" id="btnSeedDemo" type="button">Seed Demo Traffic</button>
+          <a class="outline link-btn" href="{{ url_for('sessions_page') }}">View all sessions →</a>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>SESSION ID</th><th>PLATE NUMBER</th><th>SLOT</th><th>ENTRY TIME</th><th>LIVE DURATION</th><th>FEE</th><th>PAYMENT</th><th>ACTION</th></tr></thead>
+          <tbody id="sessionRows"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- Quick Search Command Palette Modal -->
+  <dialog id="searchDialog" class="command-dialog">
+    <div class="dialog-header">
+      <input id="searchInput" placeholder="Search plates, sessions, bays, devices... (Esc to close)" autocomplete="off">
+      <button class="dialog-close" onclick="searchDialog.close()">×</button>
+    </div>
+    <div class="search-results" id="searchResults">
+      <p class="search-empty">Type a vehicle plate, bay code (e.g. A-01), or session ID...</p>
+    </div>
+  </dialog>
+
+  <!-- Live Notifications Drawer Dialog -->
+  <dialog id="notifDialog" class="notif-dialog">
+    <div class="dialog-header">
+      <h3>Live Operations Activity</h3>
+      <button class="dialog-close" onclick="notifDialog.close()">×</button>
+    </div>
+    <div class="notif-list" id="notifList">
+      <p class="loading-state">Loading recent events...</p>
+    </div>
+  </dialog>
+
+  <!-- Device Guide / Connection Setup Dialog -->
+  <dialog id="deviceGuideDialog" class="guide-dialog">
+    <div class="dialog-header">
+      <h3>IoT Hardware & Gateway Integration</h3>
+      <button class="dialog-close" onclick="deviceGuideDialog.close()">×</button>
+    </div>
+    <div class="guide-body">
+      <p>ParkEase connects to cameras, barriers, and ultrasonic slot sensors via standard MQTT telemetry:</p>
+      <div class="code-box">
+        <strong>MQTT Broker:</strong> <code>mqtt://localhost:1883</code><br>
+        <strong>Topic Structure:</strong> <code>parkease/{device_type}/{device_code}/telemetry</code><br>
+        <strong>Supported Formats:</strong> JSON payload with <code>status</code>, <code>event</code>, and <code>timestamp</code>
+      </div>
+      <p>Registered hardware devices automatically transition to <code>ONLINE</code> when events are processed. Simulated hardware drivers are available in <code>devices/simulator.py</code>.</p>
+    </div>
+  </dialog>
+
+  <!-- Interactive 3D Slot Details Dialog -->
+  <dialog id="slotDialog"><button class="dialog-close" onclick="slotDialog.close()">×</button><p class="eyebrow">PARKING BAY</p><h2 id="dialogSlot">A-01</h2><div id="dialogContent"></div></dialog>
+
+  <nav class="mobile-nav" aria-label="Mobile navigation"><a href="{{ url_for('dashboard') }}">Dashboard</a><a href="{{ url_for('slots') }}">Slots</a><a href="{{ url_for('anpr') }}">ANPR</a><a href="{{ url_for('billing') }}">Billing</a></nav>
+  <div class="toast" id="toast" role="status"></div>
+  <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.166.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/"}}</script>
+  <script type="module" src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

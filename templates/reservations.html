@@ -1,0 +1,89 @@
+{% extends 'management_base.html' %}
+{% block content %}
+<header>
+  <p>PRE-BOOKING & ADVANCE GUARANTEED SLOTS</p>
+  <h1>Parking Reservations</h1>
+</header>
+<section class="grid">
+  <form class="card" method="post" action="/reservations">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <h2>Book a Slot in Advance</h2>
+    <label>Vehicle Plate Number
+      <input name="plate" required placeholder="e.g. DL01AB1234, 22BH1234AA">
+    </label>
+    <label>Select Parking Slot
+      <select name="slot_id" required>
+        {% for s in slots %}
+        <option value="{{ s.id }}">
+          {{ s.slot_code }} — Zone {{ s.zone or 'A' }} ({{ (s.slot_type or 'standard')|title }})
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <label>Reservation Start
+        <input name="start_at" type="datetime-local" id="startAtInput" required>
+      </label>
+      <label>Expected Departure
+        <input name="end_at" type="datetime-local" id="endAtInput" required>
+      </label>
+    </div>
+    <label>Notes / Customer Contact
+      <input name="notes" placeholder="e.g. VIP Guest, +91-9876543210">
+    </label>
+    <button style="margin-top:12px;">Confirm Reservation</button>
+  </form>
+
+  <section class="card">
+    <h2>Booked Reservations ({{ reservations|length }})</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Reference</th>
+          <th>Plate</th>
+          <th>Assigned Bay</th>
+          <th>Time Window</th>
+          <th>Status</th>
+          <th>Booked By</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in reservations %}
+        <tr>
+          <td class="mono"><b>{{ r.reservation_reference }}</b></td>
+          <td class="mono"><b>{{ r.vehicle.registration_number }}</b></td>
+          <td>{{ r.slot.slot_code }} (Zone {{ r.slot.zone or 'A' }})</td>
+          <td>{{ r.start_at.strftime('%d %b, %H:%M') }} → {{ r.end_at.strftime('%H:%M') }}</td>
+          <td><span class="status {{ 'available' if r.status == 'confirmed' else 'unavailable' }}">{{ r.status|upper }}</span></td>
+          <td>{{ r.created_by.display_name if r.created_by else 'Staff' }}</td>
+          <td>
+            {% if r.status == 'confirmed' %}
+            <form method="post" action="/reservations/{{ r.id }}/cancel" style="margin:0;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button type="submit" style="padding:4px 8px;font-size:11px;background:#ef4444;">Cancel</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7">No active parking reservations found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</section>
+<script>
+  // Set default start time to now and end time to +2 hours
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const toLocalIso = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const startEl = document.querySelector('#startAtInput');
+  const endEl = document.querySelector('#endAtInput');
+  if (startEl && !startEl.value) {
+    startEl.value = toLocalIso(now);
+    const end = new Date(now.getTime() + 2 * 3600 * 1000);
+    endEl.value = toLocalIso(end);
+  }
+</script>
+{% endblock %}
