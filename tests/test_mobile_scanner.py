@@ -73,3 +73,9 @@ def test_mobile_scan_and_broadcast(test_client):
     assert poll_data['scan']['plate'] == 'UP14AB1234'
     assert poll_data['scan']['direction'] == 'entry'
     assert poll_data['scan']['thumbnail'] is not None
+
+
+def test_favicon_endpoint(test_client):
+    res = test_client.get('/favicon.ico')
+    assert res.status_code == 200
+    assert 'image' in res.content_type

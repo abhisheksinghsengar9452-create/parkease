@@ -164,37 +164,43 @@ function selectBayInHud(slot) {
   const hudExitBtn = document.querySelector('#hudExitBtn');
 
   const typeLabel = slot.type === 'ev' ? '⚡ EV Fast Charging' : slot.type === 'vip' ? '👑 VIP Reserved' : slot.type === 'disabled' ? '♿ Accessible' : 'Standard Bay';
-  hudCode.textContent = `${slot.code} (Zone ${slot.zone || 'A'})`;
-  hudDot.className = `dot ${slot.status}`;
+  if (hudCode) hudCode.textContent = `${slot.code} (Zone ${slot.zone || 'A'})`;
+  if (hudDot) hudDot.className = `dot ${slot.status}`;
   if (slot.status === 'occupied') {
-    hudStatus.innerHTML = `<b>${slot.plate || 'Parked Vehicle'}</b> · ${typeLabel} · Ref: ${slot.session_id || 'Active'}`;
-    hudActions.style.display = 'block';
-    hudExitBtn.href = `/anpr`;
+    if (hudStatus) hudStatus.innerHTML = `<b>${slot.plate || 'Parked Vehicle'}</b> · ${typeLabel} · Ref: ${slot.session_id || 'Active'}`;
+    if (hudActions) hudActions.style.display = 'block';
+    if (hudExitBtn) hudExitBtn.href = `/anpr`;
   } else {
-    hudStatus.textContent = `${typeLabel} · ${slot.status === 'available' ? 'Available for Assignment' : slot.status.toUpperCase()}`;
-    hudActions.style.display = 'none';
+    if (hudStatus) hudStatus.textContent = `${typeLabel} · ${slot.status === 'available' ? 'Available for Assignment' : slot.status.toUpperCase()}`;
+    if (hudActions) hudActions.style.display = 'none';
   }
 }
 
-host.addEventListener('click', e => {
-  const bounds = host.getBoundingClientRect();
-  mouse.x = ((e.clientX - bounds.left) / bounds.width) * 2 - 1;
-  mouse.y = -((e.clientY - bounds.top) / bounds.height) * 2 + 1;
-  raycaster.setFromCamera(mouse, camera);
-  const hit = raycaster.intersectObjects(bays)[0];
-  if (!hit) return;
-  const slot = hit.object.userData;
-  selectBayInHud(slot);
+if (host) {
+  host.addEventListener('click', e => {
+    const bounds = host.getBoundingClientRect();
+    mouse.x = ((e.clientX - bounds.left) / bounds.width) * 2 - 1;
+    mouse.y = -((e.clientY - bounds.top) / bounds.height) * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+    const hit = raycaster.intersectObjects(bays)[0];
+    if (!hit) return;
+    const slot = hit.object.userData;
+    selectBayInHud(slot);
 
-  const typeLabel = slot.type === 'ev' ? '⚡ EV Fast Charging' : slot.type === 'vip' ? '👑 VIP Reserved' : slot.type === 'disabled' ? '♿ Accessible' : 'Standard Bay';
-  document.querySelector('#dialogSlot').textContent = `${slot.code} (Zone ${slot.zone || 'A'})`;
-  document.querySelector('#dialogContent').innerHTML = `
-    <p>Bay Type: <b style="color:#00f0ff;">${typeLabel}</b></p>
-    <p>Status: <b class="status ${slot.status}">${slot.status.toUpperCase()}</b></p>
-    ${slot.plate ? `<p class="plate">${slot.plate}</p><p>Active session: <code>${slot.session_id}</code></p><p><a class="hud-action-btn" href="/anpr">Process Exit ↗</a></p>` : '<p>No active vehicle session in this bay.</p>'}
-  `;
-  document.querySelector('#slotDialog').showModal();
-});
+    const typeLabel = slot.type === 'ev' ? '⚡ EV Fast Charging' : slot.type === 'vip' ? '👑 VIP Reserved' : slot.type === 'disabled' ? '♿ Accessible' : 'Standard Bay';
+    const dialogSlot = document.querySelector('#dialogSlot');
+    if (dialogSlot) dialogSlot.textContent = `${slot.code} (Zone ${slot.zone || 'A'})`;
+    const dialogContent = document.querySelector('#dialogContent');
+    if (dialogContent) {
+      dialogContent.innerHTML = `
+        <p>Bay Type: <b style="color:#00f0ff;">${typeLabel}</b></p>
+        <p>Status: <b class="status ${slot.status}">${slot.status.toUpperCase()}</b></p>
+        ${slot.plate ? `<p class="plate">${slot.plate}</p><p>Active session: <code>${slot.session_id}</code></p><p><a class="hud-action-btn" href="/anpr">Process Exit ↗</a></p>` : '<p>No active vehicle session in this bay.</p>'}
+      `;
+    }
+    document.querySelector('#slotDialog')?.showModal();
+  });
+}
 
 addEventListener('resize', () => {
   const w = host?.clientWidth || 800;
@@ -209,7 +215,9 @@ function render() {
   renderer.render(scene, camera);
   requestAnimationFrame(render);
 }
-render();
+if (host) {
+  render();
+}
 
 // ==========================================
 // Camera Preset Controls
@@ -236,91 +244,107 @@ document.querySelectorAll('.hud-btn[data-cam]').forEach(btn => {
 // Dashboard DOM Rendering
 // ==========================================
 function renderDashboard() {
+  if (!state) return;
   const icon = {capacity: '🚗', available: '🟢', occupied: '🔴', active_sessions: '⚡', revenue: '₹'};
   const metricNames = {capacity: 'Total Capacity', available: 'Available Slots', occupied: 'Occupied Slots', active_sessions: 'Active Sessions', revenue: "Today's Revenue"};
   const tones = {capacity: '#00f0ff', available: '#10b981', occupied: '#f59e0b', active_sessions: '#00d9ff', revenue: '#10b981'};
   const metricOrder = ['capacity', 'available', 'occupied', 'active_sessions', 'revenue'];
 
-  document.querySelector('#metrics').innerHTML = metricOrder.map(key => `
-    <article class="metric glass" style="--tone:${tones[key]}">
-      <span class="metric-label">${metricNames[key]}</span>
-      <strong>${key === 'revenue' ? '₹' + Number(state.metrics[key]).toLocaleString('en-IN') : state.metrics[key]}</strong>
-      <small>${key === 'available' ? 'Ready for assignment' : key === 'occupied' ? 'Currently in use' : key === 'revenue' ? 'Confirmed cash & online totals' : 'Live system total'}</small>
-      <i>${icon[key]}</i>
-    </article>
-  `).join('');
+  const metricsEl = document.querySelector('#metrics');
+  if (metricsEl && state.metrics) {
+    metricsEl.innerHTML = metricOrder.map(key => `
+      <article class="metric glass" style="--tone:${tones[key]}">
+        <span class="metric-label">${metricNames[key]}</span>
+        <strong>${key === 'revenue' ? '₹' + Number(state.metrics[key]).toLocaleString('en-IN') : state.metrics[key]}</strong>
+        <small>${key === 'available' ? 'Ready for assignment' : key === 'occupied' ? 'Currently in use' : key === 'revenue' ? 'Confirmed cash & online totals' : 'Live system total'}</small>
+        <i>${icon[key]}</i>
+      </article>
+    `).join('');
+  }
 
   // Zone status in HUD
-  if (state.zones) {
-    const parts = Object.entries(state.zones).map(([z, inf]) => `${z}: ${inf.available}/${inf.total} Free`);
-    document.querySelector('#zoneStatus').textContent = parts.join(' · ');
-  } else {
-    const freeSlots = state.slots.filter(s => s.status === 'available').length;
-    document.querySelector('#zoneStatus').textContent = `${freeSlots} of ${state.slots.length} Bays Free`;
+  const zoneStatusEl = document.querySelector('#zoneStatus');
+  if (zoneStatusEl) {
+    if (state.zones) {
+      const parts = Object.entries(state.zones).map(([z, inf]) => `${z}: ${inf.available}/${inf.total} Free`);
+      zoneStatusEl.textContent = parts.join(' · ');
+    } else if (state.slots) {
+      const freeSlots = state.slots.filter(s => s.status === 'available').length;
+      zoneStatusEl.textContent = `${freeSlots} of ${state.slots.length} Bays Free`;
+    }
   }
 
   // Devices
   const devicesEl = document.querySelector('#devices');
-  if (state.devices && state.devices.length) {
-    devicesEl.innerHTML = state.devices.map(d => `
-      <div class="device">
-        <div><b>${d.name}</b><small>${d.detail}</small></div>
-        <span class="status ${d.status}">${d.status.toUpperCase()}</span>
-      </div>
-    `).join('');
-  } else {
-    devicesEl.innerHTML = `
-      <div class="empty-state">
-        <b>No IoT devices connected</b>
-        <span>Connect an MQTT gateway or use the simulation controls below.</span>
-      </div>
-    `;
+  if (devicesEl) {
+    if (state.devices && state.devices.length) {
+      devicesEl.innerHTML = state.devices.map(d => `
+        <div class="device">
+          <div><b>${d.name}</b><small>${d.detail}</small></div>
+          <span class="status ${d.status}">${d.status.toUpperCase()}</span>
+        </div>
+      `).join('');
+    } else {
+      devicesEl.innerHTML = `
+        <div class="empty-state">
+          <b>No IoT devices connected</b>
+          <span>Connect an MQTT gateway or use the simulation controls below.</span>
+        </div>
+      `;
+    }
   }
 
   // Sessions Table
   const sessionRowsEl = document.querySelector('#sessionRows');
-  if (state.sessions && state.sessions.length) {
-    sessionRowsEl.innerHTML = state.sessions.map(s => `
-      <tr>
-        <td class="mono">${s.id}</td>
-        <td class="mono"><b>${s.plate}</b></td>
-        <td>${s.slot}</td>
-        <td>${s.entry}</td>
-        <td class="live-duration" data-entry="${s.entry_timestamp}">${s.duration}</td>
-        <td class="mono">${s.fee}</td>
-        <td><span class="payment">${s.payment}</span></td>
-        <td><a class="exit" href="/anpr" style="text-decoration:none;">Process exit ↗</a></td>
-      </tr>
-    `).join('');
-  } else {
-    sessionRowsEl.innerHTML = `
-      <tr class="empty-row">
-        <td colspan="8">
-          <div class="empty-action-box">
-            <p>🚗 No active parking sessions right now.</p>
-            <button class="primary" id="btnQuickEntryPrompt" type="button">⚡ Quick Gate Check-In</button>
-            <button class="secondary" id="btnSeedDemoPrompt" type="button">Dispatch Demo Traffic</button>
-          </div>
-        </td>
-      </tr>
-    `;
-    document.querySelector('#btnQuickEntryPrompt')?.addEventListener('click', () => {
-      document.querySelector('#anprQuickPlate')?.focus();
-    });
-    document.querySelector('#btnSeedDemoPrompt')?.addEventListener('click', triggerSeedTraffic);
+  if (sessionRowsEl) {
+    if (state.sessions && state.sessions.length) {
+      sessionRowsEl.innerHTML = state.sessions.map(s => `
+        <tr>
+          <td class="mono">${s.id}</td>
+          <td class="mono"><b>${s.plate}</b></td>
+          <td>${s.slot}</td>
+          <td>${s.entry}</td>
+          <td class="live-duration" data-entry="${s.entry_timestamp}">${s.duration}</td>
+          <td class="mono">${s.fee}</td>
+          <td><span class="payment">${s.payment}</span></td>
+          <td><a class="exit" href="/anpr" style="text-decoration:none;">Process exit ↗</a></td>
+        </tr>
+      `).join('');
+    } else {
+      sessionRowsEl.innerHTML = `
+        <tr class="empty-row">
+          <td colspan="8">
+            <div class="empty-action-box">
+              <p>🚗 No active parking sessions right now.</p>
+              <button class="primary" id="btnQuickEntryPrompt" type="button">⚡ Quick Gate Check-In</button>
+              <button class="secondary" id="btnSeedDemoPrompt" type="button">Dispatch Demo Traffic</button>
+            </div>
+          </td>
+        </tr>
+      `;
+      document.querySelector('#btnQuickEntryPrompt')?.addEventListener('click', () => {
+        document.querySelector('#anprQuickPlate')?.focus();
+      });
+      document.querySelector('#btnSeedDemoPrompt')?.addEventListener('click', triggerSeedTraffic);
+    }
   }
 
   // ANPR Card
   const anpr = state.anpr || {};
-  document.querySelector('#anprPlate').textContent = anpr.plate || 'Ready for vehicle';
-  document.querySelector('#cameraPlate').textContent = anpr.plate || 'Ready for vehicle';
-  document.querySelector('#confidence').textContent = `${anpr.confidence || 96.8}%`;
-  document.querySelector('#confidenceBar').style.width = `${anpr.confidence || 96.8}%`;
-  if (anpr.status) {
-    document.querySelector('#cameraStatusBadge').innerHTML = `<i></i>${anpr.status}`;
+  const anprPlate = document.querySelector('#anprPlate');
+  if (anprPlate) anprPlate.textContent = anpr.plate || 'Ready for vehicle';
+  const cameraPlate = document.querySelector('#cameraPlate');
+  if (cameraPlate) cameraPlate.textContent = anpr.plate || 'Ready for vehicle';
+  const confidence = document.querySelector('#confidence');
+  if (confidence) confidence.textContent = `${anpr.confidence || 96.8}%`;
+  const confidenceBar = document.querySelector('#confidenceBar');
+  if (confidenceBar) confidenceBar.style.width = `${anpr.confidence || 96.8}%`;
+  const cameraStatusBadge = document.querySelector('#cameraStatusBadge');
+  if (cameraStatusBadge && anpr.status) {
+    cameraStatusBadge.innerHTML = `<i></i>${anpr.status}`;
   }
 
-  rebuild3DSlots();
+  if (host) rebuild3DSlots();
   updateLiveDurations();
 }
 
@@ -515,7 +539,11 @@ async function fetchState(isInitial = false) {
       throw new Error(`Server returned HTTP ${response.status}`);
     }
     state = await response.json();
-    renderDashboard();
+    try {
+      renderDashboard();
+    } catch (renderErr) {
+      console.warn('Dashboard DOM partial update warning:', renderErr);
+    }
   } catch (err) {
     console.error('Failed to load dashboard state:', err);
     if (isInitial && !state) {
@@ -529,11 +557,14 @@ try {
   setInterval(() => fetchState(false), 5000);
 } catch (error) {
   console.error('ParkEase dashboard initialization error:', error);
-  document.body.innerHTML = `
-    <main class="load-error">
-      <h1>ParkEase could not load live data.</h1>
-      <p>${error.message || 'Please refresh the page or verify the MySQL connection.'}</p>
-      <p style="margin-top:1.5rem;"><a href="/" style="display:inline-block;padding:.6rem 1.4rem;background:#00f0ff;color:#050c14;border-radius:8px;font-weight:700;text-decoration:none;">Retry Connection</a></p>
-    </main>
-  `;
+  const mainEl = document.querySelector('main');
+  if (mainEl) {
+    mainEl.innerHTML = `
+      <section class="load-error" style="padding:40px;text-align:center;">
+        <h1>ParkEase could not load live data.</h1>
+        <p>${error.message || 'Please refresh the page or verify the MySQL connection.'}</p>
+        <p style="margin-top:1.5rem;"><a href="/" style="display:inline-block;padding:.6rem 1.4rem;background:#00f0ff;color:#050c14;border-radius:8px;font-weight:700;text-decoration:none;">Retry Connection</a></p>
+      </section>
+    `;
+  }
 }

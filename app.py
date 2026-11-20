@@ -588,6 +588,14 @@ def create_app(config=None):
   action = data.get('action')
   corrected_plate = (data.get('corrected_plate') or '').strip().upper()
   if action == 'accept':
+   if corrected_plate:
+    from services.plates import normalize_plate
+    try:
+     log.normalized_text = normalize_plate(corrected_plate)
+    except ValueError as e:
+     return jsonify(error=str(e)), 400
+   elif not log.normalized_text:
+    return jsonify(error='Please enter a valid registration plate before accepting.'), 400
    log.review_status = 'accepted'
    log.reviewed_by_user_id = g.user.id
   elif action == 'correct':
@@ -876,6 +884,8 @@ def create_app(config=None):
   )
  @app.get('/branding/<path:filename>')
  def branding(filename):return send_from_directory(ROOT/'assets'/'branding',filename)
+ @app.get('/favicon.ico')
+ def favicon():return send_from_directory(ROOT/'assets'/'branding','parkease-logo-v2.png',mimetype='image/png')
  @app.cli.command('create-admin')
  @click.option('--email',prompt=True)
  @click.option('--name',prompt=True)

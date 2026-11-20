@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token }}">
   <title>{{ title }} · ParkEase</title>
+  <link rel="icon" type="image/png" href="{{ url_for('branding', filename='parkease-logo-v2.png') }}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
@@ -45,7 +46,7 @@
         <h1>{{ title }}</h1>
         <p>{{ description }}</p>
       </div>
-      <span class="badge">LOCAL MYSQL CONNECTED</span>
+      <span class="badge">DATABASE CONNECTED</span>
     </section>
 
     {% for category, message in get_flashed_messages(with_categories=true) %}
@@ -502,6 +503,13 @@
 
     function applyMobileScanToForm() {
       if (!activeMobileScan || !activeMobileScan.plate) return;
+      const confirmedForm = document.querySelector('form[action*="issue-ticket"]');
+      const confirmedInput = document.querySelector('input[name="plate"]');
+      if (confirmedForm && confirmedInput) {
+        confirmedInput.value = activeMobileScan.plate;
+        confirmedForm.submit();
+        return;
+      }
       const manualInput = document.querySelector('input[name="manual_plate"]');
       if (manualInput) {
         manualInput.value = activeMobileScan.plate;
