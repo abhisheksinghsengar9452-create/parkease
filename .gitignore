@@ -8,3 +8,5 @@ backups/
 *.log
 .vscode/
 .idea/
+*.pdf
+*.PDF
