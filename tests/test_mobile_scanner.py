@@ -43,7 +43,7 @@ def test_mobile_scanner_view(test_client):
 
 
 def test_mobile_scan_and_broadcast(test_client):
-    img_path = ROOT / 'ChatGPT Image Oct 16, 2026, 01_12_51 AM.png'
+    img_path = ROOT / 'anpr_gate_capture.png'
     assert img_path.is_file()
 
     with open(img_path, 'rb') as f:
