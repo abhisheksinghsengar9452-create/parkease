@@ -82,32 +82,33 @@
     <section class="card upload">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
         <h2>ANPR Gate Optical Scanner</h2>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button type="button" onclick="document.querySelector('#mobileCamModal').showModal()" style="background:linear-gradient(135deg, #00f0ff, #0284c7);color:#03080f;border:0;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 0 14px rgba(0,240,255,0.35);">📱 Connect Phone Camera</button>
-          <button type="button" id="btnToggleCam" style="background:#0c7180;color:#fff;border:0;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">📹 Laptop Webcam</button>
-          <button type="button" onclick="document.querySelector('#lostTicketDialog').showModal()" style="background:#475569;color:#fff;border:0;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">🎫 Lost Ticket Dispute</button>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button type="button" onclick="document.querySelector('#mobileCamModal').showModal()" style="background:linear-gradient(180deg, #00f0ff, #0284c7);color:#03080f;border:1px solid rgba(255,255,255,0.4);border-top:1px solid rgba(255,255,255,0.7);padding:8px 16px;border-radius:12px;font-size:12px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 6px 18px rgba(0,240,255,0.35),inset 0 1px 1px rgba(255,255,255,0.6);">📱 Connect Phone Camera</button>
+          <button type="button" id="btnToggleCam" style="background:rgba(255,255,255,0.08);color:#fff;border:1px solid rgba(255,255,255,0.18);border-top:1px solid rgba(255,255,255,0.35);padding:8px 14px;border-radius:12px;font-size:12px;font-weight:600;cursor:pointer;backdrop-filter:blur(16px);box-shadow:0 4px 14px rgba(0,0,0,0.3),inset 0 1px 1px rgba(255,255,255,0.2);">📹 Laptop Webcam</button>
+          <button type="button" onclick="document.querySelector('#lostTicketDialog').showModal()" style="background:rgba(255,255,255,0.08);color:#f1f5f9;border:1px solid rgba(255,255,255,0.18);border-top:1px solid rgba(255,255,255,0.35);padding:8px 14px;border-radius:12px;font-size:12px;font-weight:600;cursor:pointer;backdrop-filter:blur(16px);box-shadow:0 4px 14px rgba(0,0,0,0.3),inset 0 1px 1px rgba(255,255,255,0.2);">🎫 Lost Ticket Dispute</button>
         </div>
       </div>
 
       <!-- Live Mobile Camera Alert Banner (Auto-updates when phone scans) -->
-      <div id="mobileScanBanner" style="display:none;margin:16px 0;padding:14px 18px;background:rgba(16,185,129,0.12);border:1px solid #10b981;border-radius:10px;animation:slideDown 0.3s ease-out;">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+      <div id="mobileScanBanner" style="display:none;margin:16px 0;padding:16px 20px;background:linear-gradient(135deg,rgba(16,185,129,0.18),rgba(6,78,59,0.22));border:1px solid rgba(16,185,129,0.4);border-top:1px solid rgba(255,255,255,0.3);border-radius:18px;backdrop-filter:blur(24px) saturate(190%);box-shadow:0 18px 45px rgba(0,0,0,0.45),inset 0 1px 1px rgba(255,255,255,0.3);animation:slideDown 0.3s cubic-bezier(0.16,1,0.3,1);">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;">
           <div style="display:flex;align-items:center;gap:14px;">
-            <div style="font-size:28px;">📱</div>
+            <div style="width:44px;height:44px;border-radius:12px;background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.35);display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 4px 14px rgba(16,185,129,0.25);">📱</div>
             <div>
               <div style="display:flex;align-items:center;gap:6px;">
-                <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#10b981;box-shadow:0 0 8px #10b981;"></span>
-                <span style="font-size:11px;color:#10b981;font-weight:800;letter-spacing:0.5px;">REMOTE MOBILE CAMERA SCAN RECEIVED</span>
+                <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#10b981;box-shadow:0 0 10px #10b981;"></span>
+                <span style="font-size:11px;color:#34d399;font-weight:800;letter-spacing:0.8px;">REMOTE MOBILE SCAN VERIFIED</span>
               </div>
-              <div style="font-size:22px;font-weight:900;color:#fff;font-family:monospace;letter-spacing:1.5px;margin:2px 0;" id="bannerPlateText">UP14AB1234</div>
-              <div style="font-size:12px;color:#94a3b8;" id="bannerRtoText">Uttar Pradesh · Ghaziabad RTO · 98.4% Confidence</div>
+              <div style="font-size:24px;font-weight:900;color:#fff;font-family:monospace;letter-spacing:1.5px;margin:2px 0;" id="bannerPlateText">UP14AB1234</div>
+              <div style="font-size:12px;color:#a7f3d0;" id="bannerRtoText">Uttar Pradesh · Ghaziabad RTO · 98.4% Confidence</div>
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:10px;">
-            <img id="bannerThumbImg" src="" style="width:75px;height:48px;object-fit:cover;border-radius:6px;border:1px solid #1e3a5f;display:none;">
-            <button type="button" id="btnApplyMobileScan" onclick="applyMobileScanToForm()" style="background:#10b981;color:#050c14;border:0;padding:10px 16px;border-radius:6px;font-weight:800;font-size:13px;cursor:pointer;box-shadow:0 0 14px rgba(16,185,129,0.4);">
-              ⚡ Auto-Fill Plate & Issue Ticket
+            <img id="bannerThumbImg" src="" style="width:75px;height:48px;object-fit:cover;border-radius:8px;border:1px solid rgba(255,255,255,0.2);display:none;">
+            <button type="button" id="btnApplyMobileScan" onclick="applyMobileScanToForm()" style="background:linear-gradient(135deg,#10b981,#059669);color:#fff;border:1px solid rgba(255,255,255,0.25);padding:10px 18px;border-radius:12px;font-weight:800;font-size:13px;cursor:pointer;box-shadow:0 6px 18px rgba(16,185,129,0.35),inset 0 1px 1px rgba(255,255,255,0.4);transition:all 0.2s ease;">
+              ⚡ Auto-Fill & Issue Ticket
             </button>
+            <button type="button" onclick="dismissMobileBanner()" title="Dismiss scan" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);color:#94a3b8;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;line-height:1;transition:all 0.2s ease;">✕</button>
           </div>
         </div>
       </div>
@@ -259,10 +260,10 @@
             <td>{{ rev.recognized_at.strftime('%H:%M:%S') }}</td>
             <td>
               <div style="display:flex;gap:6px;align-items:center;">
-                <input id="corr_{{ rev.id }}" value="{{ rev.normalized_text or '' }}" placeholder="Correct plate" style="padding:4px 8px;font-size:12px;max-width:130px;">
-                <button type="button" onclick="reviewScan({{ rev.id }}, 'accept')" style="padding:4px 8px;font-size:11px;background:#10b981;border:0;color:#050c14;border-radius:4px;cursor:pointer;font-weight:700;">Accept</button>
-                <button type="button" onclick="reviewScan({{ rev.id }}, 'correct')" style="padding:4px 8px;font-size:11px;background:#0284c7;border:0;color:#fff;border-radius:4px;cursor:pointer;font-weight:600;">Correct</button>
-                <button type="button" onclick="reviewScan({{ rev.id }}, 'reject')" style="padding:4px 8px;font-size:11px;background:#ef4444;border:0;color:#fff;border-radius:4px;cursor:pointer;font-weight:600;">Reject</button>
+                <input id="corr_{{ rev.id }}" value="{{ rev.normalized_text or '' }}" placeholder="Correct plate" style="padding:6px 10px;font-size:12px;max-width:140px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.18);border-radius:8px;color:#fff;font-family:monospace;">
+                <button type="button" class="accept" onclick="reviewScan({{ rev.id }}, 'accept')" style="padding:6px 12px;font-size:11px;background:linear-gradient(180deg,#10b981,#059669);border:1px solid rgba(255,255,255,0.25);color:#fff;border-radius:8px;cursor:pointer;font-weight:700;box-shadow:0 4px 12px rgba(16,185,129,0.3);">Accept</button>
+                <button type="button" onclick="reviewScan({{ rev.id }}, 'correct')" style="padding:6px 12px;font-size:11px;background:linear-gradient(180deg,#0284c7,#0369a1);border:1px solid rgba(255,255,255,0.25);color:#fff;border-radius:8px;cursor:pointer;font-weight:600;box-shadow:0 4px 12px rgba(2,132,199,0.3);">Correct</button>
+                <button type="button" class="reject" onclick="reviewScan({{ rev.id }}, 'reject')" style="padding:6px 12px;font-size:11px;background:linear-gradient(180deg,#ef4444,#dc2626);border:1px solid rgba(255,255,255,0.25);color:#fff;border-radius:8px;cursor:pointer;font-weight:600;box-shadow:0 4px 12px rgba(239,68,68,0.3);">Reject</button>
               </div>
             </td>
           </tr>
@@ -273,28 +274,28 @@
     {% endif %}
 
     <!-- Lost Ticket Dispute Modal -->
-    <dialog id="lostTicketDialog" style="background:#091b2c;color:#fff;border:1px solid #1e3a5f;border-radius:12px;padding:24px;max-width:440px;box-shadow:0 20px 40px rgba(0,0,0,0.5);">
-      <h3 style="margin-top:0;">🎫 Lost Ticket Dispute Resolution</h3>
+    <dialog id="lostTicketDialog" style="background:linear-gradient(135deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02)),rgba(11,19,35,0.92);color:#fff;border:1px solid rgba(255,255,255,0.18);border-top:1px solid rgba(255,255,255,0.38);border-radius:24px;padding:26px;max-width:460px;box-shadow:0 30px 70px rgba(0,0,0,0.7),inset 0 1px 1px rgba(255,255,255,0.3);backdrop-filter:blur(36px) saturate(210%);">
+      <h3 style="margin-top:0;font-size:18px;">🎫 Lost Ticket Dispute Resolution</h3>
       <p style="font-size:13px;color:#94a3b8;">Resolve a lost physical ticket dispute and record audit penalty:</p>
-      <div style="margin:12px 0;">
-        <label style="display:block;margin-bottom:8px;font-size:12px;color:#94a3b8;">Vehicle Registration (if known)
-          <input id="lostPlate" placeholder="e.g. DL01AB1234" style="width:100%;padding:8px;margin-top:4px;background:#050f18;border:1px solid #1e3a5f;color:#fff;border-radius:6px;">
+      <div style="margin:16px 0;">
+        <label style="display:block;margin-bottom:10px;font-size:12px;color:#94a3b8;">Vehicle Registration (if known)
+          <input id="lostPlate" placeholder="e.g. DL01AB1234" style="width:100%;padding:10px 14px;margin-top:4px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.14);color:#fff;border-radius:10px;">
         </label>
-        <label style="display:block;margin-bottom:8px;font-size:12px;color:#94a3b8;">Standard Flat Lost Penalty (₹)
-          <input id="lostFee" type="number" value="250.00" style="width:100%;padding:8px;margin-top:4px;background:#050f18;border:1px solid #1e3a5f;color:#fff;border-radius:6px;">
+        <label style="display:block;margin-bottom:10px;font-size:12px;color:#94a3b8;">Standard Flat Lost Penalty (₹)
+          <input id="lostFee" type="number" value="250.00" style="width:100%;padding:10px 14px;margin-top:4px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.14);color:#fff;border-radius:10px;">
         </label>
-        <label style="display:block;margin-bottom:8px;font-size:12px;color:#94a3b8;">Resolution Notes
-          <input id="lostReason" value="Customer misplaced physical entry ticket" style="width:100%;padding:8px;margin-top:4px;background:#050f18;border:1px solid #1e3a5f;color:#fff;border-radius:6px;">
+        <label style="display:block;margin-bottom:10px;font-size:12px;color:#94a3b8;">Resolution Notes
+          <input id="lostReason" value="Customer misplaced physical entry ticket" style="width:100%;padding:10px 14px;margin-top:4px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.14);color:#fff;border-radius:10px;">
         </label>
       </div>
-      <div style="display:flex;gap:10px;margin-top:16px;">
-        <button type="button" onclick="resolveLostTicket()" style="background:#10b981;color:#050c14;font-weight:700;border:0;padding:10px 16px;border-radius:6px;cursor:pointer;">Confirm & Release Barrier</button>
-        <button type="button" onclick="document.querySelector('#lostTicketDialog').close()" style="background:#334155;color:#fff;border:0;padding:10px 16px;border-radius:6px;cursor:pointer;">Cancel</button>
+      <div style="display:flex;gap:12px;margin-top:20px;">
+        <button type="button" onclick="resolveLostTicket()" style="background:linear-gradient(180deg,#10b981,#059669);color:#fff;font-weight:700;border:1px solid rgba(255,255,255,0.3);padding:10px 18px;border-radius:12px;cursor:pointer;box-shadow:0 6px 18px rgba(16,185,129,0.35);">Confirm & Release Barrier</button>
+        <button type="button" onclick="document.querySelector('#lostTicketDialog').close()" style="background:rgba(255,255,255,0.08);color:#fff;border:1px solid rgba(255,255,255,0.15);padding:10px 18px;border-radius:12px;cursor:pointer;">Cancel</button>
       </div>
     </dialog>
 
     <!-- Mobile Camera QR Connection Modal -->
-    <dialog id="mobileCamModal" style="background:#071424;border:1px solid #1e3a5f;border-radius:14px;color:#f1f5f9;padding:24px;max-width:440px;width:92%;box-shadow:0 25px 50px rgba(0,0,0,0.85);margin:auto;">
+    <dialog id="mobileCamModal" style="background:linear-gradient(135deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02)),rgba(11,19,35,0.94);border:1px solid rgba(255,255,255,0.2);border-top:1px solid rgba(255,255,255,0.4);border-radius:24px;color:#f1f5f9;padding:26px;max-width:460px;width:92%;box-shadow:0 32px 80px rgba(0,0,0,0.85),inset 0 1px 1px rgba(255,255,255,0.35);backdrop-filter:blur(40px) saturate(220%);margin:auto;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
         <h3 style="margin:0;font-size:18px;display:flex;align-items:center;gap:8px;">📱 Connect Smartphone Camera</h3>
         <button type="button" onclick="document.querySelector('#mobileCamModal').close()" style="background:transparent;border:0;color:#94a3b8;font-size:22px;cursor:pointer;line-height:1;">&times;</button>
@@ -491,7 +492,7 @@
     // ==========================================
     // Real-Time Mobile Phone Camera Sync Poller
     // ==========================================
-    let lastMobileScanId = '';
+    let lastMobileScanId = sessionStorage.getItem('parkease_last_handled_scan_id') || '';
     let activeMobileScan = null;
 
     async function pollMobileScans() {
@@ -499,12 +500,29 @@
         const res = await fetch('/api/anpr/latest-mobile-scan?since=' + encodeURIComponent(lastMobileScanId));
         if (!res.ok) return;
         const data = await res.json();
-        if (data.status === 'ok' && data.scan && data.scan.id !== lastMobileScanId) {
+        if (data.status === 'ok' && data.scan && data.scan.id) {
+          if (data.scan.id === lastMobileScanId) return;
+          if (sessionStorage.getItem('parkease_dismissed_' + data.scan.id)) return;
           lastMobileScanId = data.scan.id;
+          sessionStorage.setItem('parkease_last_handled_scan_id', lastMobileScanId);
           activeMobileScan = data.scan;
           triggerMobileScanReceived(data.scan);
         }
       } catch(e) {}
+    }
+
+    function dismissMobileBanner() {
+      const banner = document.getElementById('mobileScanBanner');
+      if (banner) banner.style.display = 'none';
+      const scanId = activeMobileScan ? activeMobileScan.id : lastMobileScanId;
+      if (scanId) {
+        sessionStorage.setItem('parkease_dismissed_' + scanId, '1');
+        fetch('/api/anpr/dismiss-mobile-scan/' + encodeURIComponent(scanId), {
+          method: 'POST',
+          headers: {'X-CSRFToken': csrfToken}
+        }).catch(() => {});
+      }
+      activeMobileScan = null;
     }
 
     function triggerMobileScanReceived(scan) {
@@ -578,23 +596,33 @@
 
     function applyMobileScanToForm() {
       if (!activeMobileScan || !activeMobileScan.plate) return;
+      const scanToConsume = activeMobileScan;
+      // Immediately mark as dismissed & consumed so reload never repeats it
+      sessionStorage.setItem('parkease_dismissed_' + scanToConsume.id, '1');
+      fetch('/api/anpr/dismiss-mobile-scan/' + encodeURIComponent(scanToConsume.id), {
+        method: 'POST',
+        headers: {'X-CSRFToken': csrfToken}
+      }).catch(() => {});
+      const banner = document.getElementById('mobileScanBanner');
+      if (banner) banner.style.display = 'none';
+
       const confirmedForm = document.querySelector('form[action*="issue-ticket"]');
       const confirmedInput = document.querySelector('input[name="plate"]');
       if (confirmedForm && confirmedInput) {
-        confirmedInput.value = activeMobileScan.plate;
-        if (activeMobileScan.is_disabled) {
+        confirmedInput.value = scanToConsume.plate;
+        if (scanToConsume.is_disabled) {
           const d2 = document.getElementById('confirmIsDisabled');
           if (d2) d2.checked = true;
         }
         const pc = confirmedForm.querySelector('input[name="plate_color"]');
-        if (pc && activeMobileScan.plate_color) pc.value = activeMobileScan.plate_color;
+        if (pc && scanToConsume.plate_color) pc.value = scanToConsume.plate_color;
         confirmedForm.submit();
         return;
       }
       const manualInput = document.querySelector('input[name="manual_plate"]');
       if (manualInput) {
-        manualInput.value = activeMobileScan.plate;
-        if (activeMobileScan.is_disabled) {
+        manualInput.value = scanToConsume.plate;
+        if (scanToConsume.is_disabled) {
           const d1 = document.getElementById('anprIsDisabled');
           if (d1) d1.checked = true;
         }

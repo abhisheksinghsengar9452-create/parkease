@@ -25,33 +25,49 @@
     /* Top Bar */
     .top-bar {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 12px 16px; background: rgba(7, 21, 36, 0.95);
-      backdrop-filter: blur(8px); border-bottom: 1px solid var(--card-border);
+      padding: 14px 18px; background: rgba(9, 16, 29, 0.82);
+      backdrop-filter: blur(28px) saturate(210%); -webkit-backdrop-filter: blur(28px) saturate(210%);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
       position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
     }
     .brand { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 16px; letter-spacing: -0.5px; }
     .brand span { color: var(--cyan); }
     .status-badge {
       display: inline-flex; align-items: center; gap: 6px; font-size: 11px;
-      font-weight: 700; background: rgba(16, 185, 129, 0.15); color: var(--green);
-      padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(16, 185, 129, 0.3);
+      font-weight: 700; background: rgba(16, 185, 129, 0.16); color: #34d399;
+      padding: 5px 12px; border-radius: 999px; border: 1px solid rgba(16, 185, 129, 0.35);
+      border-top: 1px solid rgba(255, 255, 255, 0.3);
+      backdrop-filter: blur(12px);
     }
     .pulse-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); animation: pulse 1.8s infinite; }
     @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.85); } }
 
     /* Direction Selector */
     .direction-switch {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
-      padding: 10px 16px; background: #050d18; border-bottom: 1px solid var(--card-border);
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+      padding: 12px 16px; background: rgba(5, 13, 24, 0.75);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(20px);
     }
     .dir-btn {
-      padding: 10px; border-radius: 8px; border: 1px solid #1e3a5f;
-      background: #091a2e; color: var(--muted); font-size: 13px; font-weight: 700;
+      padding: 11px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.12);
+      border-top: 1px solid rgba(255, 255, 255, 0.22);
+      background: rgba(255, 255, 255, 0.04); color: var(--muted); font-size: 13px; font-weight: 700;
       cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
-      transition: all 0.2s;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25), inset 0 1px 1px rgba(255,255,255,0.15);
     }
-    .dir-btn.active.entry { background: rgba(16, 185, 129, 0.2); border-color: var(--green); color: #fff; }
-    .dir-btn.active.exit { background: rgba(239, 68, 68, 0.2); border-color: var(--red); color: #fff; }
+    .dir-btn.active.entry {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.15));
+      border-color: rgba(16, 185, 129, 0.5); border-top-color: rgba(255, 255, 255, 0.4);
+      color: #fff; box-shadow: 0 6px 18px rgba(16, 185, 129, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.35);
+    }
+    .dir-btn.active.exit {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(185, 28, 28, 0.15));
+      border-color: rgba(239, 68, 68, 0.5); border-top-color: rgba(255, 255, 255, 0.4);
+      color: #fff; box-shadow: 0 6px 18px rgba(239, 68, 68, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.35);
+    }
 
     /* Main Viewfinder Area */
     .viewfinder-wrapper {
@@ -96,54 +112,65 @@
 
     /* Fallback / HTTP Camera Notice */
     .http-fallback-banner {
-      display: none; padding: 12px 16px; background: rgba(245, 158, 11, 0.12);
+      display: none; padding: 12px 16px; background: rgba(245, 158, 11, 0.14);
       border-bottom: 1px solid rgba(245, 158, 11, 0.3); font-size: 12px; color: #fde68a;
-      text-align: center;
+      text-align: center; backdrop-filter: blur(14px);
     }
 
     /* Action Controls */
     .controls-panel {
-      padding: 16px; display: flex; flex-direction: column; gap: 12px; flex: 1;
+      padding: 16px; display: flex; flex-direction: column; gap: 14px; flex: 1;
     }
     .shutter-row {
-      display: flex; align-items: center; justify-content: space-around; gap: 14px;
+      display: flex; align-items: center; justify-content: space-around; gap: 16px;
     }
     .btn-action-round {
-      width: 48px; height: 48px; border-radius: 50%; background: #0e2238;
-      border: 1px solid var(--card-border); color: #fff; font-size: 18px;
+      width: 52px; height: 52px; border-radius: 50%;
+      background: rgba(255, 255, 255, 0.08); backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.18); border-top: 1px solid rgba(255, 255, 255, 0.35);
+      color: #fff; font-size: 20px;
       display: flex; align-items: center; justify-content: center; cursor: pointer;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.25);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     }
+    .btn-action-round:active { transform: scale(0.92); }
     .btn-shutter-main {
-      width: 76px; height: 76px; border-radius: 50%;
-      background: linear-gradient(135deg, #00f0ff, #0284c7);
-      border: 4px solid #fff; box-shadow: 0 0 24px rgba(0, 240, 255, 0.5);
-      color: #03080f; font-size: 26px; display: flex; align-items: center;
-      justify-content: center; cursor: pointer; transition: transform 0.1s, box-shadow 0.2s;
+      width: 78px; height: 78px; border-radius: 50%;
+      background: linear-gradient(180deg, #00f0ff 0%, #0284c7 100%);
+      border: 3px solid rgba(255, 255, 255, 0.8);
+      box-shadow: 0 8px 30px rgba(0, 240, 255, 0.55), inset 0 1px 1px rgba(255, 255, 255, 0.8);
+      color: #03080f; font-size: 28px; display: flex; align-items: center;
+      justify-content: center; cursor: pointer; transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s;
     }
-    .btn-shutter-main:active { transform: scale(0.92); box-shadow: 0 0 12px rgba(0, 240, 255, 0.8); }
+    .btn-shutter-main:active { transform: scale(0.92); box-shadow: 0 0 16px rgba(0, 240, 255, 0.8); }
 
     /* Scan Result Card */
     .result-card {
-      background: var(--card); border: 1px solid var(--card-border); border-radius: 12px;
-      padding: 14px; display: none; animation: slideUp 0.25s ease-out; margin-top: auto;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%), rgba(11, 19, 35, 0.85);
+      backdrop-filter: blur(32px) saturate(210%); -webkit-backdrop-filter: blur(32px) saturate(210%);
+      border: 1px solid rgba(255, 255, 255, 0.14); border-top: 1px solid rgba(255, 255, 255, 0.32);
+      border-radius: 20px; padding: 18px; display: none; animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      margin-top: auto; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.3);
     }
     @keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
     .plate-display {
-      background: #000; border: 2px solid var(--cyan); border-radius: 8px;
-      padding: 8px 12px; font-family: "Courier New", Courier, monospace;
+      background: #000; border: 2px solid var(--cyan); border-radius: 12px;
+      padding: 10px 14px; font-family: "Courier New", Courier, monospace;
       font-size: 26px; font-weight: 800; letter-spacing: 2px; text-align: center;
-      color: #fff; margin: 8px 0; text-shadow: 0 0 10px rgba(0, 240, 255, 0.6);
+      color: #fff; margin: 10px 0; text-shadow: 0 0 12px rgba(0, 240, 255, 0.6);
+      box-shadow: 0 4px 18px rgba(0,0,0,0.4);
     }
     .rto-badge {
       display: flex; justify-content: space-between; font-size: 11px;
-      color: var(--muted); padding: 4px 2px; border-top: 1px solid rgba(255,255,255,0.06);
+      color: var(--muted); padding: 6px 2px; border-top: 1px solid rgba(255,255,255,0.08);
     }
     .rto-badge b { color: var(--cyan); }
     .sync-confirm {
       display: flex; align-items: center; justify-content: center; gap: 6px;
-      background: rgba(16, 185, 129, 0.15); border: 1px solid var(--green);
-      color: #a7f3d0; font-size: 12px; font-weight: 700; padding: 6px; border-radius: 6px;
-      margin-top: 8px;
+      background: rgba(16, 185, 129, 0.16); border: 1px solid rgba(16, 185, 129, 0.4);
+      border-top: 1px solid rgba(255, 255, 255, 0.3);
+      color: #a7f3d0; font-size: 12px; font-weight: 700; padding: 8px 12px; border-radius: 10px;
+      margin-top: 10px; backdrop-filter: blur(12px);
     }
 
     /* Loading Spinner */
@@ -159,11 +186,15 @@
 
     /* Native Camera Fallback Button */
     .native-cam-btn {
-      background: linear-gradient(135deg, #0284c7, #0369a1); border: 0; color: #fff;
-      padding: 12px 18px; border-radius: 10px; font-size: 14px; font-weight: 700;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 100%), rgba(2, 132, 199, 0.4);
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.2); border-top: 1px solid rgba(255, 255, 255, 0.4);
+      color: #fff; padding: 14px 20px; border-radius: 14px; font-size: 14px; font-weight: 800;
       display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;
-      box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35); width: 100%;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.35);
+      width: 100%; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     }
+    .native-cam-btn:active { transform: scale(0.98); }
   </style>
 </head>
 <body>
@@ -421,6 +452,32 @@
         const data = await resp.json();
         isProcessing = false;
         scanLoader.style.display = 'none';
+
+        if (data.status === 'already_entered') {
+          playBeep(440, 0.15);
+          resultCard.style.display = 'block';
+          plateText.textContent = data.plate;
+          confScore.textContent = 'ALREADY INSIDE';
+          confScore.style.color = '#38bdf8';
+          plateText.style.background = 'rgba(2,132,199,0.2)';
+          plateText.style.color = '#38bdf8';
+          plateText.style.borderColor = '#0284c7';
+
+          const pTag = document.getElementById('plateTypeTag');
+          if (pTag) {
+            pTag.innerHTML = `🛡️ VEHICLE ALREADY INSIDE · BAY <b>${data.slot}</b>`;
+            pTag.style.background = 'rgba(56,189,248,0.18)';
+            pTag.style.color = '#38bdf8';
+          }
+          const syncConfirm = resultCard.querySelector('.sync-confirm');
+          if (syncConfirm) {
+            syncConfirm.innerHTML = `<span>🛡️</span> Active in lot since <b>${data.entry_time}</b>. Duplicate entry suppressed.`;
+            syncConfirm.style.borderColor = 'rgba(56,189,248,0.4)';
+            syncConfirm.style.background = 'rgba(56,189,248,0.12)';
+            syncConfirm.style.color = '#7dd3fc';
+          }
+          return;
+        }
 
         if (data.status === 'ok') {
           playSuccessChime();

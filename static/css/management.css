@@ -202,13 +202,22 @@ body {
 }
 
 .card {
-  background: linear-gradient(135deg, rgba(16, 28, 48, 0.78), rgba(8, 16, 28, 0.72));
-  border: 1px solid var(--border-glass);
-  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%), rgba(12, 20, 36, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-top: 1px solid rgba(255, 255, 255, 0.28);
+  border-left: 1px solid rgba(255, 255, 255, 0.20);
+  border-radius: 20px;
   padding: 24px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(16px);
+  box-shadow: 0 20px 48px -10px rgba(0, 0, 0, 0.55), inset 0 1px 1px 0 rgba(255, 255, 255, 0.28), inset 0 -1px 2px 0 rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(32px) saturate(210%) brightness(108%);
+  -webkit-backdrop-filter: blur(32px) saturate(210%) brightness(108%);
   position: relative;
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 28px 64px -12px rgba(0, 0, 0, 0.65), 0 0 24px rgba(0, 240, 255, 0.12), inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.40);
 }
 
 .card-header {

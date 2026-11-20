@@ -204,6 +204,15 @@ def create_app(config=None):
   scanner_url = get_mobile_scanner_url()
   qr_b64 = generate_qr_b64(scanner_url)
   return feature_page('anpr',anpr_result=result,direction=direction,exit_quote=exit_quote,pending_reviews=pending_reviews,mobile_scanner_url=scanner_url,mobile_qr_b64=qr_b64)
+ def consume_mobile_scans_for_plate(plate_val: str):
+  from services.plates import normalize_plate
+  try:
+   norm = normalize_plate(plate_val)
+  except Exception:
+   norm = (plate_val or '').strip().upper()
+  for s in LATEST_MOBILE_SCANS:
+   if s.get('plate') == norm:
+    s['consumed'] = True
  @app.post('/anpr/issue-ticket')
  @required
  def issue_anpr_ticket():
@@ -213,6 +222,7 @@ def create_app(config=None):
   vehicle_type = request.form.get('vehicle_type') or None
   try:
    parking_session=create_entry(plate, is_disabled=is_disabled, plate_color=plate_color, vehicle_type=vehicle_type)
+   consume_mobile_scans_for_plate(plate)
    record_audit(g.user.id,'parking.entry_created','parking_session',str(parking_session.id))
    db.session.commit()
    return redirect(url_for('parking_ticket',session_reference=parking_session.session_reference))
@@ -241,6 +251,9 @@ def create_app(config=None):
     ev_kwh=ev_kwh_val,
     ev_kwh_rate=getattr(rule, 'ev_kwh_rate', Decimal('15.00'))
    )
+   sess = db.session.scalar(db.select(ParkingSession).where(ParkingSession.session_reference == session_reference))
+   if sess and sess.vehicle:
+    consume_mobile_scans_for_plate(sess.vehicle.normalized_registration)
    receipt=complete_paid_exit(session_reference,secrets.token_urlsafe(20),fee.amount,'cash')
    record_audit(g.user.id,'parking.exit_completed','parking_session',session_reference)
    db.session.commit()
@@ -571,6 +584,7 @@ def create_app(config=None):
    plate=f'DL01{chars}{digits}'
   try:
    session=create_entry(plate, is_disabled=is_disabled, plate_color=plate_color, vehicle_type=vehicle_type)
+   consume_mobile_scans_for_plate(plate)
    record_audit(g.user.id,'parking.entry_created','parking_session',str(session.id))
    db.session.commit()
    slot_code = session.slot.slot_code if session.slot else 'A-01'
@@ -710,6 +724,24 @@ def create_app(config=None):
      thumb_b64 = f"data:image/jpeg;base64,{base64.b64encode(buf).decode('ascii')}"
    except Exception:
     pass
+   # Check if this vehicle is already parked inside
+   active_sess = None
+   if scan.normalized_plate:
+    veh = db.session.scalar(db.select(Vehicle).where(Vehicle.normalized_registration == scan.normalized_plate))
+    if veh:
+     active_sess = db.session.scalar(db.select(ParkingSession).where(ParkingSession.vehicle_id == veh.id, ParkingSession.status.in_(('active', 'awaiting_payment'))))
+   if direction == 'entry' and active_sess:
+    slot_name = active_sess.slot.slot_code if active_sess.slot else 'Assigned'
+    return jsonify(
+     status='already_entered',
+     scan_id=secrets.token_hex(6),
+     plate=scan.normalized_plate,
+     slot=slot_name,
+     session_reference=active_sess.session_reference,
+     entry_time=active_sess.entry_at.strftime('%H:%M:%S'),
+     direction=direction,
+     message=f'Vehicle {scan.normalized_plate} is ALREADY inside (Bay {slot_name}, entered at {active_sess.entry_at.strftime("%H:%M:%S")}). Duplicate entry prevented.'
+    )
    scan_id = secrets.token_hex(6)
    scan_record = {
     'id': scan_id,
@@ -725,6 +757,8 @@ def create_app(config=None):
     'vehicle_type': scan.vehicle_type,
     'suggested_slot_type': scan.suggested_slot_type,
     'is_disabled': is_disabled,
+    'consumed': False,
+    'ts': datetime.now().timestamp(),
     'time': datetime.now().strftime('%H:%M:%S')
    }
    LATEST_MOBILE_SCANS.append(scan_record)
@@ -761,13 +795,34 @@ def create_app(config=None):
  @app.get('/api/anpr/latest-mobile-scan')
  @required
  def api_latest_mobile_scan():
+  import time as _pytime
+  now_ts = _pytime.time()
   since_id = request.args.get('since', '').strip()
   if not LATEST_MOBILE_SCANS:
    return jsonify(status='empty', scan=None)
-  latest = LATEST_MOBILE_SCANS[-1]
+  for s in LATEST_MOBILE_SCANS:
+   if now_ts - s.get('ts', now_ts) > 180:
+    s['consumed'] = True
+   elif not s.get('consumed') and s.get('direction') == 'entry' and s.get('plate'):
+    veh = db.session.scalar(db.select(Vehicle).where(Vehicle.normalized_registration == s['plate']))
+    if veh:
+     has_active = db.session.scalar(db.select(ParkingSession).where(ParkingSession.vehicle_id == veh.id, ParkingSession.status.in_(('active', 'awaiting_payment'))))
+     if has_active:
+      s['consumed'] = True
+  unconsumed = [s for s in LATEST_MOBILE_SCANS if not s.get('consumed')]
+  if not unconsumed:
+   return jsonify(status='idle', scan=None)
+  latest = unconsumed[-1]
   if since_id and latest['id'] == since_id:
    return jsonify(status='idle', scan=None)
   return jsonify(status='ok', scan=latest)
+ @app.post('/api/anpr/dismiss-mobile-scan/<scan_id>')
+ @required
+ def api_dismiss_mobile_scan(scan_id):
+  for s in LATEST_MOBILE_SCANS:
+   if s.get('id') == scan_id:
+    s['consumed'] = True
+  return jsonify(status='ok', message='Scan dismissed.')
  @app.post('/api/tickets/lost-resolution')
  @required
  def resolve_lost_ticket():

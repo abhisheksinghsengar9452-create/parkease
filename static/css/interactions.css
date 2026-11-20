@@ -1,2 +1,506 @@
-/* Phase 0.5 interaction and narrow-screen refinements. */
-.toast{position:fixed;right:24px;bottom:24px;z-index:9;max-width:360px;padding:13px 16px;border:1px solid rgba(0,240,255,.35);border-radius:10px;background:rgba(11,15,25,.92);color:#dffcff;box-shadow:0 12px 34px #0008;transform:translateY(120px);opacity:0;transition:.25s ease;font-size:12px}.toast.show{transform:translateY(0);opacity:1}.toast.error{border-color:rgba(239,68,68,.6);color:#fecaca}.sidebar.collapsed{width:66px;padding:12px 8px}.sidebar.collapsed b,.sidebar.collapsed .operator div,.sidebar.collapsed .online-dot{display:none}.sidebar.collapsed .brand{height:45px;margin:0}.sidebar.collapsed a{padding:12px 14px}.sidebar.collapsed .operator{justify-content:center}body.sidebar-collapsed main{margin-left:86px}@media(max-width:960px){.metrics{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(145px,1fr))!important;overflow:visible!important}.metric{min-width:0!important}}@media(max-width:620px){.metrics{margin-right:0!important;grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+/* ==========================================================================
+   ParkEase Master Apple iOS Glassmorphic & Morphic Design System
+   Universal Liquid Glass, Specular Highlights, Squircles & Morphic Tactility
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Dynamic iOS Ambient Mesh Background & Lighting Canvas
+   -------------------------------------------------------------------------- */
+body {
+  background-color: #060a14 !important;
+  background-image: 
+    radial-gradient(circle at 10% 12%, rgba(14, 165, 233, 0.14) 0%, transparent 45%),
+    radial-gradient(circle at 90% 18%, rgba(6, 182, 212, 0.12) 0%, transparent 42%),
+    radial-gradient(circle at 50% 80%, rgba(16, 185, 129, 0.09) 0%, transparent 50%),
+    radial-gradient(circle at 25% 75%, rgba(99, 102, 241, 0.10) 0%, transparent 45%),
+    radial-gradient(circle at 80% 85%, rgba(56, 189, 248, 0.08) 0%, transparent 40%) !important;
+  background-attachment: fixed !important;
+  color: #f1f5f9;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Ambient glow orbs in background */
+.aurora, .glow {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(120px);
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.22;
+}
+
+.aurora.a1, .glow.glow-one, .glow.one {
+  width: 520px;
+  height: 520px;
+  background: radial-gradient(circle, #0284c7 0%, #00f0ff 40%, transparent 70%);
+  top: -160px;
+  left: 15%;
+}
+
+.aurora.a2, .glow.glow-two, .glow.two {
+  width: 560px;
+  height: 560px;
+  background: radial-gradient(circle, #059669 0%, #10b981 40%, transparent 70%);
+  bottom: -220px;
+  right: 5%;
+}
+
+/* --------------------------------------------------------------------------
+   2. Master Apple iOS Glass Surfaces (.glass, .card, .lot-panel, etc.)
+   -------------------------------------------------------------------------- */
+.glass,
+.card,
+.lot-panel,
+.monitor-card,
+.upload,
+.table-container,
+.sessions,
+.dialog,
+dialog,
+.scan-result,
+.mgmt-stats-ribbon .stat-chip,
+.metric {
+  position: relative;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%), rgba(11, 19, 35, 0.68) !important;
+  backdrop-filter: blur(32px) saturate(210%) brightness(108%) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(210%) brightness(108%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.13) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.28) !important;
+  border-left: 1px solid rgba(255, 255, 255, 0.20) !important;
+  border-radius: 20px !important;
+  box-shadow: 
+    0 20px 48px -10px rgba(0, 0, 0, 0.55),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 2px 0 rgba(0, 0, 0, 0.35) !important;
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), 
+              box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1), 
+              border-color 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* Morphic Lift & Hover Depth */
+.card:hover,
+.lot-panel:hover,
+.monitor-card:hover,
+.mgmt-stats-ribbon .stat-chip:hover,
+.metric:hover {
+  transform: translateY(-2px) scale(1.004) !important;
+  border-color: rgba(255, 255, 255, 0.24) !important;
+  border-top-color: rgba(255, 255, 255, 0.42) !important;
+  box-shadow: 
+    0 28px 64px -12px rgba(0, 0, 0, 0.65),
+    0 0 24px rgba(0, 240, 255, 0.12),
+    inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.40),
+    inset 0 -1px 2px 0 rgba(0, 0, 0, 0.35) !important;
+}
+
+/* --------------------------------------------------------------------------
+   3. Floating iOS Frosted Glass Sidebar & Top Navigation
+   -------------------------------------------------------------------------- */
+.sidebar,
+aside.sidebar {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.02) 100%), rgba(9, 16, 29, 0.76) !important;
+  backdrop-filter: blur(36px) saturate(220%) brightness(108%) !important;
+  -webkit-backdrop-filter: blur(36px) saturate(220%) brightness(108%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.28) !important;
+  border-left: 1px solid rgba(255, 255, 255, 0.20) !important;
+  border-radius: 24px !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65), inset 0 1px 1px rgba(255, 255, 255, 0.3) !important;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.sidebar a {
+  border-radius: 14px !important;
+  padding: 11px 14px !important;
+  margin: 2px 4px !important;
+  font-weight: 500 !important;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  border: 1px solid transparent !important;
+}
+
+.sidebar a:hover {
+  background: rgba(255, 255, 255, 0.07) !important;
+  color: #fff !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  transform: translateX(3px) !important;
+}
+
+.sidebar a.active {
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.22) 0%, rgba(2, 132, 199, 0.12) 100%) !important;
+  border: 1px solid rgba(0, 240, 255, 0.38) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.4) !important;
+  color: #00f0ff !important;
+  box-shadow: 0 4px 18px rgba(0, 240, 255, 0.22), inset 0 1px 1px rgba(255, 255, 255, 0.3) !important;
+}
+
+header,
+.feature-header,
+.management-header {
+  border-radius: 18px;
+  transition: all 0.25s ease;
+}
+
+/* --------------------------------------------------------------------------
+   4. Apple Liquid Morphic Buttons (.btn-primary, button, .action)
+   -------------------------------------------------------------------------- */
+button:not(.brand):not(#sidebarToggle):not(.dialog-close),
+.btn-primary,
+.action,
+.primary,
+.ticket-form button {
+  background: linear-gradient(180deg, #00f0ff 0%, #0284c7 100%) !important;
+  color: #030812 !important;
+  font-family: inherit !important;
+  font-weight: 800 !important;
+  border: 1px solid rgba(255, 255, 255, 0.35) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.6) !important;
+  border-radius: 12px !important;
+  padding: 11px 18px !important;
+  font-size: 13px !important;
+  letter-spacing: -0.2px !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  box-shadow: 
+    0 6px 20px rgba(0, 240, 255, 0.32),
+    inset 0 1px 1px rgba(255, 255, 255, 0.65),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.25) !important;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              filter 0.2s ease !important;
+  text-decoration: none !important;
+}
+
+button:not(.brand):not(#sidebarToggle):not(.dialog-close):hover,
+.btn-primary:hover,
+.action:hover,
+.primary:hover,
+.ticket-form button:hover {
+  transform: translateY(-2px) scale(1.012) !important;
+  box-shadow: 
+    0 10px 28px rgba(0, 240, 255, 0.52),
+    inset 0 1px 1.5px rgba(255, 255, 255, 0.85),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.25) !important;
+  filter: brightness(105%) !important;
+}
+
+button:not(.brand):not(#sidebarToggle):not(.dialog-close):active,
+.btn-primary:active,
+.action:active,
+.primary:active,
+.ticket-form button:active {
+  transform: scale(0.978) !important;
+  box-shadow: 0 2px 8px rgba(0, 240, 255, 0.25) !important;
+}
+
+/* Secondary & Ghost Buttons */
+.btn-secondary,
+.outline,
+.safe-action,
+.icon-btn {
+  background: rgba(255, 255, 255, 0.06) !important;
+  backdrop-filter: blur(18px) !important;
+  -webkit-backdrop-filter: blur(18px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.26) !important;
+  color: #e2e8f0 !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.2) !important;
+}
+
+.btn-secondary:hover,
+.outline:hover,
+.safe-action:hover,
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.28) !important;
+  color: #fff !important;
+}
+
+/* Destructive / Red Glass Buttons */
+.btn-danger,
+button.reject,
+button.signout {
+  background: linear-gradient(180deg, #ef4444 0%, #b91c1c 100%) !important;
+  color: #fff !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.5) !important;
+  box-shadow: 0 6px 18px rgba(239, 68, 68, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.5) !important;
+}
+
+/* Success / Green Glass Buttons */
+.btn-success,
+button.accept {
+  background: linear-gradient(180deg, #10b981 0%, #059669 100%) !important;
+  color: #fff !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.5) !important;
+  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.5) !important;
+}
+
+/* --------------------------------------------------------------------------
+   5. iOS Frosted Inset Form Controls & Modern Inputs
+   -------------------------------------------------------------------------- */
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+select,
+textarea {
+  background: rgba(255, 255, 255, 0.04) !important;
+  backdrop-filter: blur(18px) !important;
+  -webkit-backdrop-filter: blur(18px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.13) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.22) !important;
+  border-radius: 13px !important;
+  padding: 12px 16px !important;
+  color: #fff !important;
+  font-size: 13px !important;
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.32) !important;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus,
+select:focus,
+textarea:focus {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(0, 240, 255, 0.75) !important;
+  box-shadow: 
+    0 0 0 3.5px rgba(0, 240, 255, 0.22),
+    inset 0 1px 2px rgba(0, 0, 0, 0.25) !important;
+  outline: none !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: rgba(148, 163, 184, 0.6) !important;
+}
+
+/* --------------------------------------------------------------------------
+   6. Modern Apple iOS Tables & Data Grids
+   -------------------------------------------------------------------------- */
+.table-container,
+.table-wrap,
+.scroll {
+  border-radius: 18px !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.24) !important;
+  background: rgba(7, 14, 25, 0.6) !important;
+  backdrop-filter: blur(28px) !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.2) !important;
+}
+
+table {
+  width: 100%;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+}
+
+thead th {
+  background: rgba(255, 255, 255, 0.05) !important;
+  backdrop-filter: blur(20px) !important;
+  color: #94a3b8 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.8px !important;
+  text-transform: uppercase !important;
+  padding: 14px 18px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+tbody td {
+  padding: 14px 18px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+  color: #cbd5e1 !important;
+  font-size: 13px !important;
+  transition: background 0.15s ease, color 0.15s ease !important;
+}
+
+tbody tr:hover td {
+  background: rgba(255, 255, 255, 0.055) !important;
+  color: #fff !important;
+}
+
+tbody tr:last-child td {
+  border-bottom: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   7. Apple Dynamic Sheet Dialogs & Modals
+   -------------------------------------------------------------------------- */
+dialog {
+  border-radius: 24px !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.4) !important;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.09) 0%, rgba(255, 255, 255, 0.02) 100%), rgba(12, 20, 36, 0.88) !important;
+  backdrop-filter: blur(40px) saturate(220%) brightness(108%) !important;
+  -webkit-backdrop-filter: blur(40px) saturate(220%) brightness(108%) !important;
+  box-shadow: 
+    0 32px 80px rgba(0, 0, 0, 0.75),
+    inset 0 1px 1.5px rgba(255, 255, 255, 0.4),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.4) !important;
+}
+
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.6) !important;
+  backdrop-filter: blur(14px) brightness(60%) !important;
+  -webkit-backdrop-filter: blur(14px) brightness(60%) !important;
+}
+
+/* --------------------------------------------------------------------------
+   8. iOS Stat Chips, Badges & Pills
+   -------------------------------------------------------------------------- */
+.stat-chip,
+.metric {
+  border-radius: 18px !important;
+  padding: 18px 20px !important;
+}
+
+.stat-chip .stat-value,
+.metric strong {
+  font-size: 28px !important;
+  letter-spacing: -0.5px !important;
+  font-weight: 800 !important;
+}
+
+.badge,
+.role-badge,
+.status,
+.live {
+  border-radius: 999px !important;
+  backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.3) !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.5px !important;
+}
+
+.live {
+  background: rgba(16, 185, 129, 0.15) !important;
+  border-color: rgba(16, 185, 129, 0.4) !important;
+  color: #34d399 !important;
+  padding: 5px 12px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+}
+
+.live i {
+  display: inline-block !important;
+  width: 7px !important;
+  height: 7px !important;
+  border-radius: 50% !important;
+  background: #10b981 !important;
+  box-shadow: 0 0 12px #10b981 !important;
+}
+
+/* Digital Clock Glass Capsule */
+.digital-clock {
+  background: rgba(255, 255, 255, 0.06) !important;
+  backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.28) !important;
+  border-radius: 12px !important;
+  padding: 7px 14px !important;
+  color: #e2e8f0 !important;
+  font-weight: 600 !important;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.15) !important;
+}
+
+/* --------------------------------------------------------------------------
+   9. Flashed Notifications & Alerts
+   -------------------------------------------------------------------------- */
+.mgmt-flash,
+.flash,
+.toast {
+  border-radius: 16px !important;
+  backdrop-filter: blur(28px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.35) !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.3) !important;
+}
+
+/* --------------------------------------------------------------------------
+   10. Sidebar Collapsed States & Responsive Adjustments
+   -------------------------------------------------------------------------- */
+.toast {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 999;
+  max-width: 380px;
+  padding: 14px 18px;
+  background: rgba(11, 19, 35, 0.88);
+  color: #f1f5f9;
+  transform: translateY(120px);
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  font-size: 13px;
+}
+
+.toast.show {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.sidebar.collapsed {
+  width: 72px !important;
+  padding: 16px 10px !important;
+}
+
+.sidebar.collapsed b,
+.sidebar.collapsed .operator div,
+.sidebar.collapsed .online-dot {
+  display: none !important;
+}
+
+.sidebar.collapsed .brand {
+  height: 48px !important;
+  margin: 0 !important;
+}
+
+.sidebar.collapsed a {
+  padding: 12px 14px !important;
+  justify-content: center !important;
+}
+
+.sidebar.collapsed .operator {
+  justify-content: center !important;
+}
+
+body.sidebar-collapsed main {
+  margin-left: 96px !important;
+}
+
+@media (max-width: 960px) {
+  .sidebar {
+    width: 72px !important;
+    padding: 16px 8px !important;
+  }
+  .sidebar b, .operator div, .online-dot {
+    display: none !important;
+  }
+  main,
+  main.feature-main,
+  .management-main {
+    margin-left: 88px !important;
+    padding: 24px 18px !important;
+  }
+  .grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 640px) {
+  body.sidebar-collapsed main,
+  main,
+  main.feature-main,
+  .management-main {
+    margin-left: 0 !important;
+    padding: 18px 12px !important;
+  }
+  .sidebar {
+    display: none !important;
+  }
+}

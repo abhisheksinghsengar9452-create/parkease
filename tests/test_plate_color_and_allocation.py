@@ -105,18 +105,25 @@ def test_slot_allocation_petrol_diesel_cannot_take_disabled_or_ev(test_app):
 def test_petrol_diesel_rejected_when_only_ev_and_disabled_available(test_app):
     """When only EV and Disabled slots are available, Petrol/Diesel vehicle is rejected with clear error."""
     with test_app.app_context():
-        s_std = ParkingSlot.query.filter_by(slot_code="0-TEST-STD").first()
-        s_std.status = "occupied"
+        # Ensure all standard slots are occupied so only EV and Disabled remain available
+        std_slots = ParkingSlot.query.filter_by(slot_type="standard", status="available").all()
+        for s in std_slots:
+            s.status = "occupied"
         db.session.commit()
 
-        # Attempt to enter normal Petrol/Diesel vehicle
-        with pytest.raises(ValueError, match="No standard parking slots available for Petrol/Diesel"):
-            create_entry("DL01PETROL9", is_disabled=False, plate_color="white")
+        try:
+            # Attempt to enter normal Petrol/Diesel vehicle
+            with pytest.raises(ValueError, match="No standard parking slots available for Petrol/Diesel"):
+                create_entry("DL01PETROL9", is_disabled=False, plate_color="white")
 
-        # But a PwD driver CAN enter and claim the disabled slot!
-        pwd_session = create_entry("DL01PWD999", is_disabled=True)
-        assert pwd_session.slot.slot_type == "disabled"
-        assert pwd_session.slot.slot_code == "0-TEST-DIS"
+            # But a PwD driver CAN enter and claim the disabled slot!
+            pwd_session = create_entry("DL01PWD999", is_disabled=True)
+            assert pwd_session.slot.slot_type == "disabled"
+            assert pwd_session.slot.slot_code == "0-TEST-DIS"
+        finally:
+            for s in std_slots:
+                s.status = "available"
+            db.session.commit()
 
 
 def test_ev_green_plate_gets_ev_slot(test_app):
