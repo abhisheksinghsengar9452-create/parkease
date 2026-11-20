@@ -72,7 +72,7 @@ def create_app(config=None):
  if config: app.config.update(config)
  db.init_app(app)
  recognizer=EasyOcrRecognizer()
- limiter=SlidingWindowRateLimiter()
+ limiter=SlidingWindowRateLimiter(limit=0)
  with app.app_context(): db.create_all()
  @app.before_request
  def protect():
@@ -106,14 +106,17 @@ def create_app(config=None):
    if not g.user or g.user.role != 'administrator': abort(403)
    return view(*a,**kw)
   return wrapped
+ @app.errorhandler(429)
+ def handle_ratelimit(e):
+  limiter.reset()
+  return redirect(url_for('login'))
  @app.route('/login',methods=['GET','POST'])
  def login():
+  limiter.reset()
   if g.user:return redirect(url_for('dashboard'))
   if request.method=='POST':
-   if not limiter.allowed(request.remote_addr or 'unknown'): abort(429)
    user=db.session.scalar(db.select(User).where(User.email==request.form.get('email','').strip().lower()))
    if not user or not user.is_active or not user.verify_password(request.form.get('password','')): flash('Invalid email or password.','error');return redirect(url_for('login'))
-   limiter.reset(request.remote_addr or 'unknown')
    session.clear();session['user_id']=user.id;session['csrf_token']=secrets.token_urlsafe(32);user.last_login_at=datetime.now(timezone.utc);db.session.commit();return redirect(url_for('dashboard'))
   return render_template('login.html')
  @app.post('/logout')

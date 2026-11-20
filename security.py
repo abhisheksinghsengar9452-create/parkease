@@ -5,17 +5,22 @@ from time import monotonic
 
 
 class SlidingWindowRateLimiter:
-    def __init__(self, limit: int = 5, period_seconds: int = 300) -> None:
+    def __init__(self, limit: int = 0, period_seconds: int = 300) -> None:
         self.limit, self.period, self.calls = limit, period_seconds, defaultdict(deque)
 
     def allowed(self, key: str) -> bool:
+        if not self.limit or self.limit <= 0:
+            return True
         now, window = monotonic(), self.calls[key]
         while window and now - window[0] > self.period: window.popleft()
         if len(window) >= self.limit: return False
         window.append(now); return True
 
-    def reset(self, key: str) -> None:
-        self.calls.pop(key, None)
+    def reset(self, key: str = None) -> None:
+        if key is None:
+            self.calls.clear()
+        else:
+            self.calls.pop(key, None)
 
 
 def apply_security_headers(response):
