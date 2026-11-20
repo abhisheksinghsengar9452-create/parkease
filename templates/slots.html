@@ -1,84 +1,162 @@
 {% extends 'management_base.html' %}
+
+{% block title %}Slot Management & Multi-Zone Layout · ParkEase{% endblock %}
+{% block eyebrow %}PARKING INVENTORY & BAY MANAGEMENT{% endblock %}
+{% block page_title %}Parking Bays & <span>Multi-Zone Layout</span>{% endblock %}
+
 {% block content %}
-<header>
-  <p>PARKING INVENTORY & BAY MANAGEMENT</p>
-  <h1>Parking Slots & Multi-Zone Layout</h1>
-</header>
+<!-- Top KPI Stats Ribbon -->
+<div class="mgmt-stats-ribbon">
+  <div class="stat-chip">
+    <span class="stat-label">Total Bays</span>
+    <strong class="stat-value cyan">{{ slots|length }}</strong>
+    <small class="stat-desc">Facility capacity</small>
+    <i class="stat-icon">🅿️</i>
+  </div>
+  <div class="stat-chip">
+    <span class="stat-label">Available Now</span>
+    <strong class="stat-value green">{{ slots|selectattr('status', 'equalto', 'available')|list|length }}</strong>
+    <small class="stat-desc">Open for allocation</small>
+    <i class="stat-icon">🟢</i>
+  </div>
+  <div class="stat-chip">
+    <span class="stat-label">Occupied</span>
+    <strong class="stat-value amber">{{ slots|selectattr('status', 'equalto', 'occupied')|list|length }}</strong>
+    <small class="stat-desc">Active vehicle sessions</small>
+    <i class="stat-icon">🚗</i>
+  </div>
+  <div class="stat-chip">
+    <span class="stat-label">EV Fast Chargers</span>
+    <strong class="stat-value cyan">{{ slots|selectattr('slot_type', 'equalto', 'ev')|list|length }}</strong>
+    <small class="stat-desc">Basement & Zone A hubs</small>
+    <i class="stat-icon">⚡</i>
+  </div>
+</div>
+
 <section class="grid">
+  <!-- Left Card: Add Parking Bay -->
   {% if current_user.role == 'administrator' %}
-  <form class="card" method="post">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <h2>Add Parking Slot</h2>
-    <label>Slot Code
-      <input name="slot_code" required placeholder="e.g. EV-04, B-05">
-    </label>
-    <label>Zone
-      <select name="zone">
-        <option value="A">Zone A (Ground Level)</option>
-        <option value="B">Zone B (Outdoor)</option>
-        <option value="Basement">Basement (EV Hub)</option>
-      </select>
-    </label>
-    <label>Bay Classification / Type
-      <select name="slot_type">
-        <option value="standard">Standard Vehicle</option>
-        <option value="ev">EV Fast-Charging ⚡</option>
-        <option value="vip">VIP Reserved 👑</option>
-        <option value="disabled">Accessible / Disabled ♿</option>
-      </select>
-    </label>
-    <button style="margin-top:8px;">Create Slot</button>
-  </form>
+  <div class="card">
+    <div class="card-header">
+      <h2>🅿️ Provision New Bay</h2>
+      <span class="badge-count">CONFIG</span>
+    </div>
+    <form method="post" class="mgmt-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+      <div class="form-group">
+        <label for="slotCodeInput">Bay Code</label>
+        <input id="slotCodeInput" name="slot_code" required placeholder="e.g. A-06, EV-05, VIP-02" style="font-family:var(--font-mono);font-weight:700;text-transform:uppercase;">
+        <span class="form-hint">Unique alphanumeric bay identifier</span>
+      </div>
+
+      <div class="form-group">
+        <label for="zoneSelect">Zone / Floor Level</label>
+        <select id="zoneSelect" name="zone">
+          <option value="A">Zone A (Ground Level — Fast Flow)</option>
+          <option value="B">Zone B (Outdoor Perimeter)</option>
+          <option value="Basement">Basement (EV Supercharging Hub)</option>
+        </select>
+        <span class="form-hint">Physical parking zone designation</span>
+      </div>
+
+      <div class="form-group">
+        <label for="slotTypeSelect">Bay Classification / Equipment</label>
+        <select id="slotTypeSelect" name="slot_type">
+          <option value="standard">Standard Vehicle Bay</option>
+          <option value="ev">⚡ EV Fast-Charging Bay</option>
+          <option value="vip">👑 VIP Executive Reserved</option>
+          <option value="disabled">♿ Accessible / Priority Bay</option>
+        </select>
+        <span class="form-hint">Determines rates and access privileges</span>
+      </div>
+
+      <button type="submit" class="btn-primary" style="margin-top:8px;">
+        ⚡ Create Parking Bay
+      </button>
+    </form>
+  </div>
   {% endif %}
 
-  <section class="card">
-    <h2>Active Bays ({{ slots|length }})</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Slot</th>
-          <th>Zone</th>
-          <th>Type</th>
-          <th>Status</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for slot in slots %}
-        <tr>
-          <td><b>{{ slot.slot_code }}</b></td>
-          <td>{{ slot.zone or 'A' }}</td>
-          <td>
-            {% if slot.slot_type == 'ev' %}
-            <span style="color:#00f0ff;font-weight:600;">⚡ EV Charging</span>
-            {% elif slot.slot_type == 'vip' %}
-            <span style="color:#f59e0b;font-weight:600;">👑 VIP Reserved</span>
-            {% elif slot.slot_type == 'disabled' %}
-            <span style="color:#38bdf8;font-weight:600;">♿ Accessible</span>
-            {% else %}
-            <span>Standard</span>
-            {% endif %}
-          </td>
-          <td><span class="status {{ slot.status }}">{{ slot.status|upper }}</span></td>
-          <td>
+  <!-- Right Card: Active Parking Bays Inventory -->
+  <div class="card" {% if current_user.role != 'administrator' %}style="grid-column:1/-1;"{% endif %}>
+    <div class="card-header">
+      <h2>Active Parking Bays Inventory</h2>
+      <span class="badge-count">{{ slots|length }} BAYS</span>
+    </div>
+
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Bay Identifier</th>
+            <th>Zone</th>
+            <th>Classification</th>
+            <th>Live Status</th>
             {% if current_user.role == 'administrator' %}
-            <form method="post" action="/slots/{{ slot.id }}/status" style="margin:0;display:flex;gap:6px;">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-              <select name="status" style="padding:4px 8px;font-size:12px;">
-                <option value="available" {% if slot.status == 'available' %}selected{% endif %}>Available</option>
-                <option value="maintenance" {% if slot.status == 'maintenance' %}selected{% endif %}>Maintenance</option>
-                <option value="unavailable" {% if slot.status == 'unavailable' %}selected{% endif %}>Unavailable</option>
-              </select>
-              <button style="padding:4px 10px;font-size:11px;">Update</button>
-            </form>
+            <th style="text-align:right;">Modify State</th>
             {% endif %}
-          </td>
-        </tr>
-        {% else %}
-        <tr><td colspan="5">No parking slots created.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </section>
+          </tr>
+        </thead>
+        <tbody>
+          {% for slot in slots %}
+          <tr>
+            <td>
+              <span class="mono" style="font-weight:800;color:#fff;background:rgba(0,240,255,0.08);padding:5px 10px;border-radius:6px;border:1px solid rgba(0,240,255,0.25);">
+                {{ slot.slot_code }}
+              </span>
+            </td>
+            <td>
+              <span style="font-weight:600;color:#94a3b8;">Zone {{ slot.zone or 'A' }}</span>
+            </td>
+            <td>
+              {% if slot.slot_type == 'ev' %}
+              <span style="color:var(--cyan);font-weight:700;">⚡ EV Fast-Charge</span>
+              {% elif slot.slot_type == 'vip' %}
+              <span style="color:var(--amber);font-weight:700;">👑 VIP Reserved</span>
+              {% elif slot.slot_type == 'disabled' %}
+              <span style="color:var(--sky);font-weight:700;">♿ Accessible</span>
+              {% else %}
+              <span style="color:#94a3b8;">Standard Bay</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if slot.status == 'available' %}
+              <span class="status-pill available"><i></i> AVAILABLE</span>
+              {% elif slot.status == 'occupied' %}
+              <span class="status-pill occupied"><i></i> OCCUPIED</span>
+              {% elif slot.status == 'maintenance' %}
+              <span class="status-pill maintenance"><i></i> MAINTENANCE</span>
+              {% else %}
+              <span class="status-pill disabled"><i></i> {{ slot.status|upper }}</span>
+              {% endif %}
+            </td>
+            {% if current_user.role == 'administrator' %}
+            <td style="text-align:right;">
+              <form method="post" action="/slots/{{ slot.id }}/status" style="margin:0;display:inline-flex;gap:6px;align-items:center;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <select name="status" style="padding:6px 10px;font-size:11px;width:auto;">
+                  <option value="available" {% if slot.status == 'available' %}selected{% endif %}>Available</option>
+                  <option value="maintenance" {% if slot.status == 'maintenance' %}selected{% endif %}>Maintenance</option>
+                  <option value="unavailable" {% if slot.status == 'unavailable' %}selected{% endif %}>Unavailable</option>
+                </select>
+                <button type="submit" class="btn-toggle enable" style="padding:6px 10px;font-size:11px;">
+                  Set
+                </button>
+              </form>
+            </td>
+            {% endif %}
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="5" style="text-align:center;padding:32px;color:var(--text-dim);">
+              No parking slots registered. Use the provision form to add bays.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
 </section>
 {% endblock %}

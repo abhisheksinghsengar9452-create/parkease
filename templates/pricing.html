@@ -1,91 +1,172 @@
 {% extends 'management_base.html' %}
+
+{% block title %}Pricing Engine & Tariff Rules · ParkEase{% endblock %}
+{% block eyebrow %}TARIFF CONFIGURATION & REVENUE ENGINE{% endblock %}
+{% block page_title %}Dynamic Pricing & <span>Rate Engine</span>{% endblock %}
+
 {% block content %}
-<header>
-  <p>TARIFF CONFIGURATION & REVENUE ENGINE</p>
-  <h1>Dynamic Pricing Rules</h1>
-</header>
+<!-- Top KPI Stats Ribbon -->
+<div class="mgmt-stats-ribbon">
+  {% set active_rule = rules|selectattr('is_active')|first %}
+  <div class="stat-chip">
+    <span class="stat-label">Active Live Rate</span>
+    <strong class="stat-value cyan">₹{{ active_rule.hourly_rate if active_rule else '50.00' }} / hr</strong>
+    <small class="stat-desc">{{ active_rule.name if active_rule else 'Standard Tariff' }}</small>
+    <i class="stat-icon">🏷️</i>
+  </div>
+  <div class="stat-chip">
+    <span class="stat-label">Free Grace Window</span>
+    <strong class="stat-value green">{{ (active_rule.grace_period_minutes if active_rule else 15) }} Mins</strong>
+    <small class="stat-desc">Zero charge for quick exits</small>
+    <i class="stat-icon">⏱️</i>
+  </div>
+  <div class="stat-chip">
+    <span class="stat-label">EV Supercharging</span>
+    <strong class="stat-value">₹{{ (active_rule.ev_kwh_rate if active_rule else '15.00') }} / kWh</strong>
+    <small class="stat-desc">Live dispenser metered</small>
+    <i class="stat-icon">⚡</i>
+  </div>
+  <div class="stat-chip">
+    <span class="stat-label">Configured Profiles</span>
+    <strong class="stat-value amber">{{ rules|length }} Rules</strong>
+    <small class="stat-desc">Peak, off-peak & weekend</small>
+    <i class="stat-icon">📋</i>
+  </div>
+</div>
+
 <section class="grid">
+  <!-- Left Card: Create New Rule -->
   {% if current_user.role == 'administrator' %}
-  <form class="card" method="post" action="/pricing">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <h2>Create New Pricing Rule</h2>
-    <label>Rule Name
-      <input name="name" required placeholder="e.g. Peak Surge Rate, Weekend Special">
-    </label>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-      <label>Hourly Rate (₹)
-        <input name="hourly_rate" type="number" step="0.01" min="0" required placeholder="50.00">
-      </label>
-      <label>Minimum Charge (₹)
-        <input name="minimum_charge" type="number" step="0.01" min="0" value="0.00">
-      </label>
+  <div class="card">
+    <div class="card-header">
+      <h2>🏷️ Configure New Tariff</h2>
+      <span class="badge-count">CONFIG</span>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-      <label>Billing Increment (mins)
-        <input name="billing_increment_minutes" type="number" min="1" value="60">
+    <form method="post" action="/pricing" class="mgmt-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+      <div class="form-group">
+        <label for="ruleNameInput">Rule Profile Name</label>
+        <input id="ruleNameInput" name="name" required placeholder="e.g. Festival Rush Surge, Night Off-Peak">
+        <span class="form-hint">Descriptive label for operational staff</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-group">
+          <label for="hourlyRateInput">Hourly Rate (₹)</label>
+          <input id="hourlyRateInput" name="hourly_rate" type="number" step="0.01" min="0" required placeholder="50.00">
+        </div>
+        <div class="form-group">
+          <label for="minChargeInput">Min Charge (₹)</label>
+          <input id="minChargeInput" name="minimum_charge" type="number" step="0.01" min="0" value="0.00">
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-group">
+          <label for="incrementInput">Billing Unit (mins)</label>
+          <input id="incrementInput" name="billing_increment_minutes" type="number" min="1" value="60">
+        </div>
+        <div class="form-group">
+          <label for="graceInput">Grace Period (mins)</label>
+          <input id="graceInput" name="grace_period_minutes" type="number" min="0" value="15">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="evRateInput">EV Fast-Charging Unit Tariff (₹/kWh)</label>
+        <input id="evRateInput" name="ev_kwh_rate" type="number" step="0.01" min="0" value="15.00">
+        <span class="form-hint">Added to parking duration for EV charges</span>
+      </div>
+
+      <label style="display:flex;flex-direction:row;align-items:center;gap:10px;margin-top:6px;cursor:pointer;">
+        <input type="checkbox" name="set_active" value="true" checked style="width:auto;margin:0;accent-color:var(--cyan);">
+        <span style="font-size:12px;color:#fff;text-transform:none;letter-spacing:normal;">Deploy as Active Live Rate Immediately</span>
       </label>
-      <label>Grace Period (mins free)
-        <input name="grace_period_minutes" type="number" min="0" value="15">
-      </label>
-    </div>
-    <label>EV Fast-Charging Rate (₹/kWh)
-      <input name="ev_kwh_rate" type="number" step="0.01" min="0" value="15.00">
-    </label>
-    <label style="display:flex;align-items:center;gap:8px;margin-top:8px;">
-      <input type="checkbox" name="set_active" value="true" checked>
-      <b>Set as Active Live Rate Immediately</b>
-    </label>
-    <button style="margin-top:12px;">Save & Deploy Rule</button>
-  </form>
+
+      <button type="submit" class="btn-primary" style="margin-top:8px;">
+        ⚡ Save & Deploy Tariff
+      </button>
+    </form>
+  </div>
   {% endif %}
 
-  <section class="card">
-    <h2>Configured Rules ({{ rules|length }})</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Rule Name</th>
-          <th>Hourly Rate</th>
-          <th>Min Charge</th>
-          <th>Increment</th>
-          <th>Grace Period</th>
-          <th>EV Rate</th>
-          <th>Status</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for r in rules %}
-        <tr style="{% if r.is_active %}background:rgba(16,185,129,0.08);{% endif %}">
-          <td><b>{{ r.name }}</b></td>
-          <td class="mono">₹{{ r.hourly_rate }}</td>
-          <td class="mono">₹{{ r.minimum_charge }}</td>
-          <td>{{ r.billing_increment_minutes }}m</td>
-          <td>{{ r.grace_period_minutes or 15 }}m free</td>
-          <td class="mono">₹{{ r.ev_kwh_rate or '15.00' }}/kWh</td>
-          <td>
-            {% if r.is_active %}
-            <span class="status available" style="font-weight:700;">ACTIVE LIVE</span>
-            {% else %}
-            <span class="status unavailable">INACTIVE</span>
+  <!-- Right Card: Configured Rules Table -->
+  <div class="card" {% if current_user.role != 'administrator' %}style="grid-column:1/-1;"{% endif %}>
+    <div class="card-header">
+      <h2>Configured Tariff Profiles</h2>
+      <span class="badge-count">{{ rules|length }} PROFILES</span>
+    </div>
+
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Profile Name</th>
+            <th>Rate / Hr</th>
+            <th>Min Base</th>
+            <th>Increment</th>
+            <th>Grace</th>
+            <th>EV Tariff</th>
+            <th>Status</th>
+            {% if current_user.role == 'administrator' %}
+            <th style="text-align:right;">Action</th>
             {% endif %}
-          </td>
-          <td>
-            {% if not r.is_active and current_user.role == 'administrator' %}
-            <form method="post" action="/pricing/{{ r.id }}/activate" style="margin:0;">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-              <button type="submit" style="padding:6px 12px;font-size:11px;">Activate</button>
-            </form>
-            {% elif r.is_active %}
-            <small style="color:#10b981;font-weight:600;">Current</small>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rules %}
+          <tr {% if r.is_active %}style="background:rgba(16,185,129,0.06);"{% endif %}>
+            <td>
+              <b style="color:#fff;">{{ r.name }}</b>
+            </td>
+            <td>
+              <span class="mono" style="color:var(--cyan);font-weight:700;">₹{{ r.hourly_rate }}</span>
+            </td>
+            <td>
+              <span class="mono">₹{{ r.minimum_charge }}</span>
+            </td>
+            <td>
+              <span class="mono">{{ r.billing_increment_minutes }}m</span>
+            </td>
+            <td>
+              <span class="mono" style="color:var(--green);">{{ r.grace_period_minutes or 15 }}m free</span>
+            </td>
+            <td>
+              <span class="mono">₹{{ r.ev_kwh_rate or '15.00' }}/kWh</span>
+            </td>
+            <td>
+              {% if r.is_active %}
+              <span class="status-pill active"><i></i> ACTIVE LIVE</span>
+              {% else %}
+              <span class="status-pill disabled"><i></i> INACTIVE</span>
+              {% endif %}
+            </td>
+            {% if current_user.role == 'administrator' %}
+            <td style="text-align:right;">
+              {% if not r.is_active %}
+              <form method="post" action="/pricing/{{ r.id }}/activate" style="margin:0;display:inline-block;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="btn-toggle enable" style="padding:4px 10px;font-size:11px;">
+                  Activate
+                </button>
+              </form>
+              {% else %}
+              <span style="font-size:11px;color:var(--green);font-family:var(--font-mono);font-weight:700;">DEPLOYED</span>
+              {% endif %}
+            </td>
             {% endif %}
-          </td>
-        </tr>
-        {% else %}
-        <tr><td colspan="8">No pricing rules defined.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </section>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="8" style="text-align:center;padding:32px;color:var(--text-dim);">
+              No pricing rules configured.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
 </section>
 {% endblock %}

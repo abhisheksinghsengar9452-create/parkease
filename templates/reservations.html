@@ -1,78 +1,168 @@
 {% extends 'management_base.html' %}
-{% block content %}
-<header>
-  <p>PRE-BOOKING & ADVANCE GUARANTEED SLOTS</p>
-  <h1>Parking Reservations</h1>
-</header>
-<section class="grid">
-  <form class="card" method="post" action="/reservations">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <h2>Book a Slot in Advance</h2>
-    <label>Vehicle Plate Number
-      <input name="plate" required placeholder="e.g. DL01AB1234, 22BH1234AA">
-    </label>
-    <label>Select Parking Slot
-      <select name="slot_id" required>
-        {% for s in slots %}
-        <option value="{{ s.id }}">
-          {{ s.slot_code }} — Zone {{ s.zone or 'A' }} ({{ (s.slot_type or 'standard')|title }})
-        </option>
-        {% endfor %}
-      </select>
-    </label>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-      <label>Reservation Start
-        <input name="start_at" type="datetime-local" id="startAtInput" required>
-      </label>
-      <label>Expected Departure
-        <input name="end_at" type="datetime-local" id="endAtInput" required>
-      </label>
-    </div>
-    <label>Notes / Customer Contact
-      <input name="notes" placeholder="e.g. VIP Guest, +91-9876543210">
-    </label>
-    <button style="margin-top:12px;">Confirm Reservation</button>
-  </form>
 
-  <section class="card">
-    <h2>Booked Reservations ({{ reservations|length }})</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Reference</th>
-          <th>Plate</th>
-          <th>Assigned Bay</th>
-          <th>Time Window</th>
-          <th>Status</th>
-          <th>Booked By</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for r in reservations %}
-        <tr>
-          <td class="mono"><b>{{ r.reservation_reference }}</b></td>
-          <td class="mono"><b>{{ r.vehicle.registration_number }}</b></td>
-          <td>{{ r.slot.slot_code }} (Zone {{ r.slot.zone or 'A' }})</td>
-          <td>{{ r.start_at.strftime('%d %b, %H:%M') }} → {{ r.end_at.strftime('%H:%M') }}</td>
-          <td><span class="status {{ 'available' if r.status == 'confirmed' else 'unavailable' }}">{{ r.status|upper }}</span></td>
-          <td>{{ r.created_by.display_name if r.created_by else 'Staff' }}</td>
-          <td>
-            {% if r.status == 'confirmed' %}
-            <form method="post" action="/reservations/{{ r.id }}/cancel" style="margin:0;">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-              <button type="submit" style="padding:4px 8px;font-size:11px;background:#ef4444;">Cancel</button>
-            </form>
-            {% endif %}
-          </td>
-        </tr>
-        {% else %}
-        <tr><td colspan="7">No active parking reservations found.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </section>
+{% block title %}Advance Reservations · ParkEase{% endblock %}
+{% block eyebrow %}PRE-BOOKING & GUARANTEED SLOTS{% endblock %}
+{% block page_title %}Parking Reservations & <span>Advance Bookings</span>{% endblock %}
+
+{% block content %}
+<!-- Top KPI Stats Ribbon -->
+<div class="mgmt-stats-ribbon">
+  <div class="stat-chip">
+    <span class="stat-label">Total Reservations</span>
+    <strong class="stat-value cyan">{{ reservations|length }}</strong>
+    <small class="stat-desc">Historical & active bookings</small>
+    <i class="stat-icon">📅</i>
+  </div>
+  <div class="stat-chip">
+    <span class="stat-label">Confirmed Active</span>
+    <strong class="stat-value green">{{ reservations|selectattr('status', 'equalto', 'confirmed')|list|length }}</strong>
+    <small class="stat-desc">Guaranteed slot reservations</small>
+    <i class="stat-icon">✓</i>
+  </div>
+  <div class="stat-chip">
+    <span class="stat-label">Facility Capacity</span>
+    <strong class="stat-value">{{ slots|length }} Bays</strong>
+    <small class="stat-desc">Zone A, B & Basement</small>
+    <i class="stat-icon">🅿️</i>
+  </div>
+  <div class="stat-chip">
+    <span class="stat-label">ANPR Gate Sync</span>
+    <strong class="stat-value amber">ENABLED</strong>
+    <small class="stat-desc">Auto-opens on plate arrival</small>
+    <i class="stat-icon">⚡</i>
+  </div>
+</div>
+
+<section class="grid">
+  <!-- Left Card: Book Reservation Form -->
+  <div class="card">
+    <div class="card-header">
+      <h2>📅 Pre-Book Guaranteed Slot</h2>
+      <span class="badge-count">NEW</span>
+    </div>
+    <form method="post" action="/reservations" class="mgmt-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+      <div class="form-group">
+        <label for="resPlateInput">Vehicle Registration Number</label>
+        <input id="resPlateInput" name="plate" required placeholder="e.g. DL01AB1234, 22BH1234AA" style="text-transform:uppercase;font-family:var(--font-mono);font-weight:700;">
+        <span class="form-hint">Vehicle that will trigger gate optical check-in</span>
+      </div>
+
+      <div class="form-group">
+        <label for="resSlotSelect">Assigned Parking Bay</label>
+        <select id="resSlotSelect" name="slot_id" required>
+          {% for s in slots %}
+          <option value="{{ s.id }}">
+            {{ s.slot_code }} — Zone {{ s.zone or 'A' }} ({{ (s.slot_type or 'standard')|title }})
+          </option>
+          {% endfor %}
+        </select>
+        <span class="form-hint">Designated bay locked for this vehicle</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-group">
+          <label for="startAtInput">Arrival Window</label>
+          <input name="start_at" type="datetime-local" id="startAtInput" required>
+        </div>
+        <div class="form-group">
+          <label for="endAtInput">Expected Exit</label>
+          <input name="end_at" type="datetime-local" id="endAtInput" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="resNotesInput">Customer Contact / Notes</label>
+        <input id="resNotesInput" name="notes" placeholder="e.g. VIP Guest, +91-9876543210">
+        <span class="form-hint">Operator phone verification notes</span>
+      </div>
+
+      <button type="submit" class="btn-primary" style="margin-top:8px;">
+        ⚡ Confirm & Issue Guaranteed Pass
+      </button>
+    </form>
+  </div>
+
+  <!-- Right Card: Booked Reservations Table -->
+  <div class="card">
+    <div class="card-header">
+      <h2>📋 Active & Scheduled Bookings</h2>
+      <span class="badge-count">{{ reservations|length }} BOOKINGS</span>
+    </div>
+
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Reference</th>
+            <th>Vehicle Plate</th>
+            <th>Allocated Bay</th>
+            <th>Time Schedule</th>
+            <th>Status</th>
+            <th>Staff Actor</th>
+            <th style="text-align:right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in reservations %}
+          <tr>
+            <td>
+              <span class="mono" style="font-weight:800;color:var(--cyan);">
+                {{ r.reservation_reference }}
+              </span>
+            </td>
+            <td>
+              <div class="plate-tag">
+                <span class="ind">IND</span>
+                <span>{{ r.vehicle.registration_number }}</span>
+              </div>
+            </td>
+            <td>
+              <b style="color:#fff;">{{ r.slot.slot_code }}</b>
+              <small style="color:#64748b;display:block;">Zone {{ r.slot.zone or 'A' }}</small>
+            </td>
+            <td>
+              <span class="mono" style="font-size:12px;color:#cbd5e1;">
+                {{ r.start_at.strftime('%d %b, %H:%M') }} → {{ r.end_at.strftime('%H:%M') }}
+              </span>
+            </td>
+            <td>
+              {% if r.status == 'confirmed' %}
+              <span class="status-pill active"><i></i> CONFIRMED</span>
+              {% else %}
+              <span class="status-pill disabled"><i></i> {{ r.status|upper }}</span>
+              {% endif %}
+            </td>
+            <td>
+              <small style="color:#94a3b8;">{{ r.created_by.display_name if r.created_by else 'Operator' }}</small>
+            </td>
+            <td style="text-align:right;">
+              {% if r.status == 'confirmed' %}
+              <form method="post" action="/reservations/{{ r.id }}/cancel" style="margin:0;display:inline-block;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="btn-toggle disable" style="padding:4px 10px;font-size:11px;">
+                  Cancel
+                </button>
+              </form>
+              {% else %}
+              <small style="color:#64748b;">—</small>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" style="text-align:center;padding:32px;color:var(--text-dim);">
+              No active reservations in the queue.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
 </section>
+
 <script>
   // Set default start time to now and end time to +2 hours
   const now = new Date();

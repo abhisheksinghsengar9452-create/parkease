@@ -1,87 +1,141 @@
 {% extends 'management_base.html' %}
+
+{% block title %}Shift Settlement & Drawer Audit · ParkEase{% endblock %}
+{% block eyebrow %}DAILY RECONCILIATION & CASH DRAWER AUDIT{% endblock %}
+{% block page_title %}Cashier Shift Handover & <span>Settlement</span>{% endblock %}
+
 {% block content %}
-<header>
-  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;">
-    <div>
-      <p>DAILY RECONCILIATION & CASH DRAWER AUDIT</p>
-      <h1>Cashier Shift Handover & Settlement</h1>
+<!-- Top Header Actions -->
+<div style="display:flex;justify-content:flex-end;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
+  <a href="/api/export/payments.csv" class="btn-primary btn-secondary" style="font-size:12px;padding:8px 16px;">
+    📥 Export Payments CSV
+  </a>
+  <button onclick="window.print()" class="btn-primary" style="font-size:12px;padding:8px 16px;">
+    🖨️ Print Handover Slip
+  </button>
+</div>
+
+<!-- Top KPI Stats Ribbon -->
+<div class="mgmt-stats-ribbon">
+  <div class="stat-chip">
+    <span class="stat-label">Shift Revenue Total</span>
+    <strong class="stat-value green">₹{{ "%.2f"|format(total_revenue) }}</strong>
+    <small class="stat-desc">Cash + UPI settlements</small>
+    <i class="stat-icon">💰</i>
+  </div>
+  <div class="stat-chip">
+    <span class="stat-label">Physical Cash in Drawer</span>
+    <strong class="stat-value cyan">₹{{ "%.2f"|format(cash_total) }}</strong>
+    <small class="stat-desc">Expected physical currency</small>
+    <i class="stat-icon">💵</i>
+  </div>
+  <div class="stat-chip">
+    <span class="stat-label">UPI & Digital Total</span>
+    <strong class="stat-value">₹{{ "%.2f"|format(digital_total) }}</strong>
+    <small class="stat-desc">Direct QR / NetBanking</small>
+    <i class="stat-icon">📱</i>
+  </div>
+  <div class="stat-chip">
+    <span class="stat-label">Traffic Throughput</span>
+    <strong class="stat-value amber">{{ total_checkins }} In / {{ total_exits }} Out</strong>
+    <small class="stat-desc">Active in bays: {{ active_sessions_cnt }}</small>
+    <i class="stat-icon">⚡</i>
+  </div>
+</div>
+
+<section class="grid">
+  <!-- Left Card: Drawer Reconciliation -->
+  <div class="card">
+    <div class="card-header">
+      <h2>💵 Physical Cash Audit</h2>
+      <span class="badge-count">DRAWER</span>
     </div>
-    <div style="display:flex;gap:10px;">
-      <a href="/api/export/payments.csv" class="action-btn" style="background:#0c7180;color:#fff;padding:8px 14px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600;">📥 Export Payments CSV</a>
-      <button onclick="window.print()" style="background:#10b981;color:#050c14;border:0;padding:8px 14px;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;">🖨️ Print Shift Handover Slip</button>
+
+    <div class="mgmt-form">
+      <p style="font-size:12px;color:var(--text-muted);margin:0;line-height:1.5;">
+        Verify currency notes in the toll booth cash register against computed system totals:
+      </p>
+
+      <div class="form-group" style="margin-top:10px;">
+        <label for="countedCash">Physical Cash Counted (₹)</label>
+        <input type="number" id="countedCash" step="10" placeholder="Count notes and enter ₹ total" oninput="calculateVariance()">
+        <span class="form-hint">Expected: ₹{{ "%.2f"|format(cash_total) }}</span>
+      </div>
+
+      <div id="varianceBox" style="margin-top:14px;padding:14px;border-radius:10px;background:#06121f;border:1px solid rgba(0,240,255,0.2);display:none;">
+        <span id="varianceText" style="font-weight:700;font-size:13px;display:block;"></span>
+        <small id="varianceSub" style="color:var(--text-dim);font-size:11px;margin-top:4px;display:block;"></small>
+      </div>
+
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:14px;margin-top:10px;font-size:12px;">
+        <b style="color:#fff;display:block;margin-bottom:6px;">Shift Handover Details</b>
+        <div style="color:var(--text-muted);display:grid;gap:4px;">
+          <div>Operator: <b style="color:#fff;">{{ current_user.display_name }}</b></div>
+          <div>Shift Date: <span class="mono">{{ today_str }}</span></div>
+          <div>Audit Status: <span style="color:var(--green);font-weight:700;">READY FOR SIGN-OFF</span></div>
+        </div>
+      </div>
     </div>
   </div>
-</header>
 
-<section class="grid" style="margin-top:20px;">
-  <section class="card" style="grid-column:1/-1;">
-    <h2>Today's Shift Totals · {{ today_str }} (Operator: {{ current_user.display_name }})</h2>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:16px;margin:16px 0;">
-      <div style="background:#061320;padding:16px;border-radius:8px;border:1px solid #14283b;">
-        <span style="font-size:12px;color:#94a3b8;display:block;">TOTAL REVENUE</span>
-        <strong style="font-size:26px;color:#10b981;display:block;margin-top:4px;">₹{{ "%.2f"|format(total_revenue) }}</strong>
-        <small style="color:#64748b;">All payment streams</small>
-      </div>
-      <div style="background:#061320;padding:16px;border-radius:8px;border:1px solid #14283b;">
-        <span style="font-size:12px;color:#94a3b8;display:block;">CASH IN DRAWER</span>
-        <strong style="font-size:26px;color:#00f0ff;display:block;margin-top:4px;">₹{{ "%.2f"|format(cash_total) }}</strong>
-        <small style="color:#64748b;">Physical currency collected</small>
-      </div>
-      <div style="background:#061320;padding:16px;border-radius:8px;border:1px solid #14283b;">
-        <span style="font-size:12px;color:#94a3b8;display:block;">UPI & DIGITAL</span>
-        <strong style="font-size:26px;color:#38bdf8;display:block;margin-top:4px;">₹{{ "%.2f"|format(digital_total) }}</strong>
-        <small style="color:#64748b;">Direct gateway & QR</small>
-      </div>
-      <div style="background:#061320;padding:16px;border-radius:8px;border:1px solid #14283b;">
-        <span style="font-size:12px;color:#94a3b8;display:block;">OPERATIONS VOLUME</span>
-        <strong style="font-size:26px;color:#f59e0b;display:block;margin-top:4px;">{{ total_checkins }} In / {{ total_exits }} Out</strong>
-        <small style="color:#64748b;">Active currently: {{ active_sessions_cnt }}</small>
-      </div>
+  <!-- Right Card: Recent Shift Payments Table -->
+  <div class="card">
+    <div class="card-header">
+      <h2>🧾 Recent Shift Payment Transactions</h2>
+      <span class="badge-count">{{ recent_payments|length }} PAYMENTS</span>
     </div>
-  </section>
 
-  <section class="card">
-    <h2>Cash Drawer Reconciliation</h2>
-    <div style="margin:12px 0;">
-      <p style="font-size:13px;color:#94a3b8;margin-bottom:12px;">Verify physical cash bills counted against system calculation:</p>
-      <label>Counted Cash Total (₹)
-        <input type="number" id="countedCash" step="10" placeholder="Count and enter physical cash" oninput="calculateVariance()">
-      </label>
-      <div id="varianceBox" style="margin-top:14px;padding:12px;border-radius:6px;background:#0b1928;display:none;">
-        <span id="varianceText" style="font-weight:700;font-size:14px;"></span>
-      </div>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Txn Ref</th>
+            <th>Parking Session</th>
+            <th>Collected</th>
+            <th>Channel</th>
+            <th>Verification</th>
+            <th style="text-align:right;">Time</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in recent_payments %}
+          <tr>
+            <td>
+              <span class="mono" style="font-weight:700;color:#94a3b8;">#{{ p.id }}</span>
+            </td>
+            <td>
+              <span class="mono" style="color:var(--cyan);font-weight:700;">
+                {{ p.parking_session.session_reference if p.parking_session else '—' }}
+              </span>
+            </td>
+            <td>
+              <b class="mono" style="color:#fff;font-size:14px;">₹{{ p.amount }}</b>
+            </td>
+            <td>
+              <span class="role-badge {% if p.method == 'cash' %}operator{% else %}admin{% endif %}">
+                {{ p.method|upper }}
+              </span>
+            </td>
+            <td>
+              <span class="status-pill active"><i></i> SETTLED</span>
+            </td>
+            <td style="text-align:right;">
+              <span class="mono" style="font-size:12px;color:var(--text-muted);">
+                {{ p.paid_at.strftime('%H:%M:%S') if p.paid_at else '—' }}
+              </span>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="6" style="text-align:center;padding:32px;color:var(--text-dim);">
+              No payment transactions recorded during this shift.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
-  </section>
-
-  <section class="card">
-    <h2>Recent Shift Payments ({{ recent_payments|length }})</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Ref / ID</th>
-          <th>Session</th>
-          <th>Amount</th>
-          <th>Method</th>
-          <th>Status</th>
-          <th>Time</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for p in recent_payments %}
-        <tr>
-          <td class="mono">#{{ p.id }}</td>
-          <td class="mono">{{ p.parking_session.session_reference if p.parking_session else '—' }}</td>
-          <td class="mono"><b>₹{{ p.amount }}</b></td>
-          <td><span class="payment">{{ p.method|upper }}</span></td>
-          <td><span class="status available">CONFIRMED</span></td>
-          <td>{{ p.paid_at.strftime('%H:%M:%S') if p.paid_at else '—' }}</td>
-        </tr>
-        {% else %}
-        <tr><td colspan="6">No payments processed in this shift yet.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </section>
+  </div>
 </section>
 
 <script>
@@ -91,16 +145,21 @@
     const diff = actual - expected;
     const box = document.querySelector('#varianceBox');
     const txt = document.querySelector('#varianceText');
+    const sub = document.querySelector('#varianceSub');
     box.style.display = 'block';
+
     if (Math.abs(diff) < 0.01) {
       txt.style.color = '#10b981';
-      txt.textContent = '✓ Cash drawer matches system totals perfectly (₹0.00 variance).';
+      txt.textContent = '✓ Cash drawer matches system totals perfectly (₹0.00 variance)';
+      sub.textContent = 'Reconciliation balanced. Ready for supervisor sign-off.';
     } else if (diff > 0) {
       txt.style.color = '#38bdf8';
       txt.textContent = `▲ Cash Over by ₹${diff.toFixed(2)}`;
+      sub.textContent = 'Physical notes exceed expected recorded collections.';
     } else {
       txt.style.color = '#ef4444';
       txt.textContent = `▼ Cash Short by ₹${Math.abs(diff).toFixed(2)}`;
+      sub.textContent = 'Physical currency is less than recorded cash transactions.';
     }
   }
 </script>

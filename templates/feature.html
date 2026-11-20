@@ -8,38 +8,63 @@
   <link rel="icon" type="image/png" href="{{ url_for('branding', filename='parkease-logo-v2.png') }}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/interactions.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/feature.css') }}">
 </head>
 <body>
-  <div class="glow one"></div><div class="glow two"></div>
-  <header>
-    <a class="brand" href="{{ url_for('dashboard') }}">
+  <div class="aurora a1"></div><div class="aurora a2"></div>
+
+  <!-- Persistent Cyber Sidebar -->
+  <aside class="sidebar glass" id="sidebar">
+    <button class="brand" id="sidebarToggle" aria-label="Toggle navigation" style="border:0;background:transparent;cursor:pointer;padding:0;">
       <img src="{{ url_for('branding', filename='parkease-logo-v2.png') }}" alt="ParkEase">
-    </a>
+    </button>
     <nav>
-      <a href="{{ url_for('dashboard') }}">Dashboard</a>
-      <a href="{{ url_for('anpr') }}">ANPR</a>
-      <a href="{{ url_for('slots') }}">Slots</a>
-      <a href="{{ url_for('reservations') }}">Reservations</a>
-      {% if current_user.role == 'administrator' %}
-      <a href="{{ url_for('pricing') }}">Pricing</a>
+      <a class="{% if request.path == '/' %}active{% endif %}" href="{{ url_for('dashboard') }}"><span>📊</span><b>Dashboard</b></a>
+      <a class="{% if request.path == '/lot-map' %}active{% endif %}" href="{{ url_for('lot_map') }}"><span>🗺️</span><b>Live 3D Lot Map</b></a>
+      <a class="{% if request.path == '/anpr' %}active{% endif %}" href="{{ url_for('anpr') }}"><span>📷</span><b>ANPR Gate Monitor</b></a>
+      <a href="{{ url_for('mobile_scanner') }}" target="_blank" style="border-left: 3px solid #00f0ff;"><span>📱</span><b>Mobile Cam Node</b></a>
+      <a class="{% if request.path == '/slots' %}active{% endif %}" href="{{ url_for('slots') }}"><span>🅿️</span><b>Slot Management</b></a>
+      <a class="{% if request.path == '/reservations' %}active{% endif %}" href="{{ url_for('reservations') }}"><span>📅</span><b>Reservations</b></a>
+      {% if current_user and current_user.role == 'administrator' %}
+      <a class="{% if request.path == '/pricing' %}active{% endif %}" href="{{ url_for('pricing') }}"><span>🏷️</span><b>Pricing Engine</b></a>
       {% endif %}
-      <a href="{{ url_for('analytics') }}">Analytics</a>
-      <a href="{{ url_for('settlement') }}">Settlement</a>
-      <a href="{{ url_for('vehicles') }}">Vehicles</a>
-      {% if current_user.role == 'administrator' %}
-      <a href="{{ url_for('users') }}">Users</a>
+      <a class="{% if request.path in ['/billing', '/sessions'] %}active{% endif %}" href="{{ url_for('billing') }}"><span>💳</span><b>Billing & Sessions</b></a>
+      <a class="{% if request.path == '/analytics' %}active{% endif %}" href="{{ url_for('analytics') }}"><span>📈</span><b>Analytics & Trends</b></a>
+      <a class="{% if request.path == '/settlement' %}active{% endif %}" href="{{ url_for('settlement') }}"><span>🧾</span><b>Shift Settlement</b></a>
+      <a class="{% if request.path == '/hardware' %}active{% endif %}" href="{{ url_for('hardware') }}"><span>⚡</span><b>IoT Hardware Status</b></a>
+      <a class="{% if request.path == '/audit-logs' %}active{% endif %}" href="{{ url_for('audit_logs') }}"><span>📋</span><b>Audit Logs</b></a>
+      <a class="{% if request.path == '/vehicles' %}active{% endif %}" href="{{ url_for('vehicles') }}"><span>🚗</span><b>Vehicle Registry</b></a>
+      {% if current_user and current_user.role == 'administrator' %}
+      <a class="{% if request.path.startswith('/admin/users') %}active{% endif %}" href="{{ url_for('users') }}"><span>👥</span><b>Role/User Admin</b></a>
       {% endif %}
     </nav>
-    <form action="{{ url_for('logout') }}" method="post">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-      <button type="submit">Sign out</button>
-    </form>
-  </header>
+    <div class="operator">
+      <span class="avatar">{{ current_user.display_name[:2]|upper if current_user else 'PE' }}</span>
+      <div><b>{{ current_user.display_name if current_user else 'Operator' }}</b><small>{{ (current_user.role|title) if current_user else 'Staff' }}</small></div>
+      <i class="online-dot" title="Online"></i>
+    </div>
+  </aside>
 
-  <main>
-    <a class="back" href="{{ url_for('dashboard') }}">← Back to command center</a>
+  <!-- Main Viewport -->
+  <main class="feature-main">
+    <header class="feature-header">
+      <div>
+        <p class="eyebrow">OPERATIONS COMMAND</p>
+        <h1 class="page-title">{{ title }}</h1>
+      </div>
+      <div class="header-actions">
+        <span class="live"><i></i> SYSTEM ACTIVE</span>
+        <span id="clock" class="digital-clock"></span>
+        <a href="{{ url_for('dashboard') }}" class="icon-btn" title="Back to Command Center" style="text-decoration:none;display:flex;align-items:center;justify-content:center;">📊</a>
+        <form action="{{ url_for('logout') }}" method="post" style="margin:0;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button class="icon-btn signout" type="submit" aria-label="Sign out" title="Sign Out">Sign Out</button>
+        </form>
+      </div>
+    </header>
     <section class="hero">
       <div>
         <p class="eyebrow">OPERATIONS MODULE</p>
@@ -522,6 +547,22 @@
     if (document.querySelector('#btnOpenMobileModal') || document.querySelector('#mobileCamModal')) {
       setInterval(pollMobileScans, 1200);
     }
+
+    function updateFeatureClock() {
+      const el = document.getElementById('clock');
+      if (el) {
+        el.textContent = new Intl.DateTimeFormat('en-IN', {
+          hour: '2-digit', minute: '2-digit', second: '2-digit'
+        }).format(new Date());
+      }
+    }
+    updateFeatureClock();
+    setInterval(updateFeatureClock, 1000);
+
+    document.querySelector('#sidebarToggle')?.addEventListener('click', () => {
+      document.querySelector('#sidebar').classList.toggle('collapsed');
+      document.body.classList.toggle('sidebar-collapsed');
+    });
   </script>
 </body>
 </html>

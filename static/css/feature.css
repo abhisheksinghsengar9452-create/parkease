@@ -10,7 +10,12 @@ nav{display:flex;gap:18px;flex:1}
 nav a,.back{color:#a8c6d8;text-decoration:none;font-size:12px}
 nav a:hover,.back:hover{color:#00f0ff}
 button,.action{border:1px solid #36eceb76;border-radius:8px;background:linear-gradient(100deg,#00c9dd,#10a982);color:#04151b;font-weight:700;padding:9px 13px;cursor:pointer;text-decoration:none;font-size:12px}
-main{position:relative;max-width:1180px;margin:0 auto;padding:42px 26px}
+main.feature-main{position:relative;margin-left:284px;padding:32px 36px 48px;max-width:1750px;min-height:100vh}
+.feature-header{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;margin-bottom:24px}
+.feature-header .eyebrow{margin:0 0 6px;color:#00f0ff;font:700 11px 'JetBrains Mono';letter-spacing:2px;text-transform:uppercase}
+.feature-header h1.page-title{margin:0;font-size:28px;font-weight:800;letter-spacing:-0.8px;color:#fff}
+.digital-clock{font-family:'JetBrains Mono';font-size:13px;color:#94a3b8;background:rgba(0,240,255,0.05);border:1px solid rgba(0,240,255,0.18);padding:6px 12px;border-radius:8px}
+@media(max-width:960px){main.feature-main{margin-left:80px;padding:20px 16px}}
 .hero{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin:22px 0 24px}
 .eyebrow{margin:0 0 9px;color:#65e9f3;letter-spacing:2px;font:600 10px 'JetBrains Mono'}
 h1{margin:0;font-size:34px;letter-spacing:-1.5px}

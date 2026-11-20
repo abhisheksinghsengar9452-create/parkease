@@ -1,1 +1,153 @@
-{% extends 'management_base.html' %}{% block content %}<header><p>ADMINISTRATION</p><h1>Users & access</h1></header><section class="grid"><form class="card" method="post"><input type="hidden" name="csrf_token" value="{{csrf_token}}"><h2>Create user</h2><label>Name<input name="display_name" required></label><label>Email<input name="email" type="email" required></label><label>Temporary password<input name="password" type="password" minlength="12" required></label><label>Role<select name="role"><option value="operator">Operator</option><option value="administrator">Administrator</option></select></label><button>Create user</button></form><section class="card"><h2>{{users|length}} accounts</h2><table><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th></th></tr>{% for user in users %}<tr><td>{{user.display_name}}</td><td>{{user.email}}</td><td>{{user.role}}</td><td>{{'Active' if user.is_active else 'Disabled'}}</td><td>{% if user.id != current_user.id %}<form method="post" action="/admin/users/{{user.id}}/toggle"><input type="hidden" name="csrf_token" value="{{csrf_token}}"><button>{{'Disable' if user.is_active else 'Enable'}}</button></form>{% endif %}</td></tr>{% endfor %}</table></section></section>{% endblock %}
+{% extends 'management_base.html' %}
+
+{% block title %}User & Role Administration · ParkEase{% endblock %}
+{% block eyebrow %}SYSTEM SECURITY & ACCESS CONTROL{% endblock %}
+{% block page_title %}Users & Access <span>Permissions</span>{% endblock %}
+
+{% block content %}
+<!-- Top KPI Stats Ribbon -->
+<div class="mgmt-stats-ribbon">
+  <div class="stat-chip">
+    <span class="stat-label">Total Accounts</span>
+    <strong class="stat-value cyan">{{ users|length }}</strong>
+    <small class="stat-desc">Provisioned system identities</small>
+    <i class="stat-icon">👥</i>
+  </div>
+  <div class="stat-chip">
+    <span class="stat-label">Administrators</span>
+    <strong class="stat-value">{{ users|selectattr('role', 'equalto', 'administrator')|list|length }}</strong>
+    <small class="stat-desc">Full facility access</small>
+    <i class="stat-icon">👑</i>
+  </div>
+  <div class="stat-chip">
+    <span class="stat-label">Gate Operators</span>
+    <strong class="stat-value">{{ users|selectattr('role', 'equalto', 'operator')|list|length }}</strong>
+    <small class="stat-desc">ANPR & toll booth staff</small>
+    <i class="stat-icon">🛡️</i>
+  </div>
+  <div class="stat-chip">
+    <span class="stat-label">Active Status</span>
+    <strong class="stat-value green">{{ users|selectattr('is_active')|list|length }} / {{ users|length }}</strong>
+    <small class="stat-desc">Ready to authenticate</small>
+    <i class="stat-icon">🟢</i>
+  </div>
+</div>
+
+<section class="grid">
+  <!-- Left Card: Create Account -->
+  <div class="card">
+    <div class="card-header">
+      <h2>👤 Provision New User</h2>
+      <span class="badge-count">NEW</span>
+    </div>
+    <form method="post" class="mgmt-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      
+      <div class="form-group">
+        <label for="displayNameInput">Full Name</label>
+        <input id="displayNameInput" name="display_name" required placeholder="e.g. Vikramaditya Rathore" autocomplete="off">
+        <span class="form-hint">Staff member or operator full display name</span>
+      </div>
+
+      <div class="form-group">
+        <label for="emailInput">Work Email</label>
+        <input id="emailInput" name="email" type="email" required placeholder="name@parkease.local" autocomplete="off">
+        <span class="form-hint">Used as login credential</span>
+      </div>
+
+      <div class="form-group">
+        <label for="passwordInput">Temporary Password</label>
+        <input id="passwordInput" name="password" type="password" minlength="12" required placeholder="At least 12 characters" autocomplete="new-password">
+        <span class="form-hint">Must contain letters, numbers, and symbols</span>
+      </div>
+
+      <div class="form-group">
+        <label for="roleSelect">Access Role</label>
+        <select id="roleSelect" name="role">
+          <option value="operator">🛡️ Operator (Gate, Tickets & ANPR)</option>
+          <option value="administrator">👑 Administrator (Full Facility Control)</option>
+        </select>
+        <span class="form-hint">Defines dashboard permissions and actions</span>
+      </div>
+
+      <button type="submit" class="btn-primary" style="margin-top:8px;">
+        ⚡ Create & Authorize Account
+      </button>
+    </form>
+  </div>
+
+  <!-- Right Card: Staff Directory Table -->
+  <div class="card">
+    <div class="card-header">
+      <h2>👥 Authorized Staff Directory</h2>
+      <span class="badge-count">{{ users|length }} ACCOUNTS</span>
+    </div>
+
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Staff Member</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Account State</th>
+            <th style="text-align:right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for user in users %}
+          <tr>
+            <td>
+              <div class="user-cell">
+                <span class="user-avatar">{{ user.display_name[:2]|upper }}</span>
+                <div>
+                  <b style="color:#fff;display:block;">{{ user.display_name }}</b>
+                  {% if user.id == current_user.id %}
+                  <small style="color:var(--cyan);font-family:var(--font-mono);font-size:10px;">★ You (Active Session)</small>
+                  {% endif %}
+                </div>
+              </div>
+            </td>
+            <td>
+              <span class="mono" style="color:#94a3b8;font-size:12px;">{{ user.email }}</span>
+            </td>
+            <td>
+              {% if user.role == 'administrator' %}
+              <span class="role-badge admin">👑 Administrator</span>
+              {% else %}
+              <span class="role-badge operator">🛡️ Operator</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if user.is_active %}
+              <span class="status-pill active"><i></i> ACTIVE</span>
+              {% else %}
+              <span class="status-pill disabled"><i></i> DISABLED</span>
+              {% endif %}
+            </td>
+            <td style="text-align:right;">
+              {% if user.id != current_user.id %}
+              <form method="post" action="/admin/users/{{ user.id }}/toggle" style="margin:0;display:inline-block;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                {% if user.is_active %}
+                <button type="submit" class="btn-toggle disable" title="Disable login access for this account">
+                  🔒 Disable
+                </button>
+                {% else %}
+                <button type="submit" class="btn-toggle enable" title="Restore login access for this account">
+                  🔓 Enable
+                </button>
+                {% endif %}
+              </form>
+              {% else %}
+              <span style="font-size:11px;color:#64748b;font-family:var(--font-mono);font-weight:600;">PROTECTED</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,40 +1,101 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>ParkEase Management</title>
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>{% block title %}ParkEase Operations Command{% endblock %}</title>
   <link rel="icon" type="image/png" href="{{ url_for('branding', filename='parkease-logo-v2.png') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/interactions.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/management.css') }}">
+  {% block extra_head %}{% endblock %}
 </head>
 <body>
-  <nav style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 24px;background:#091929;border-bottom:1px solid #14283b;">
-    <a href="/" style="font-weight:700;color:#00f0ff;text-decoration:none;">ParkEase</a>
-    <a href="/">Dashboard</a>
-    <a href="/anpr">ANPR Monitor</a>
-    <a href="/slots">Slots & Zones</a>
-    <a href="/reservations">Reservations</a>
-    {% if current_user and current_user.role == 'administrator' %}
-    <a href="/pricing">Pricing Rules</a>
-    {% endif %}
-    <a href="/billing">Billing</a>
-    <a href="/analytics">Analytics</a>
-    <a href="/settlement">Shift Settlement</a>
-    <a href="/mobile-scanner" target="_blank" style="color:#00f0ff;font-weight:600;">📱 Mobile Cam</a>
-    <a href="/vehicles">Vehicles</a>
-    {% if current_user and current_user.role == 'administrator' %}
-    <a href="/admin/users">Users</a>
-    {% endif %}
-    <form action="/logout" method="post" style="margin-left:auto;">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-      <button style="background:transparent;border:1px solid #334155;color:#94a3b8;padding:6px 12px;border-radius:6px;cursor:pointer;">Sign out</button>
-    </form>
-  </nav>
-  <main style="padding:24px;">
+  <div class="aurora a1"></div><div class="aurora a2"></div>
+
+  <!-- Persistent High-Tech Cyber Sidebar -->
+  <aside class="sidebar glass" id="sidebar">
+    <button class="brand" id="sidebarToggle" aria-label="Toggle navigation" style="border:0;background:transparent;cursor:pointer;padding:0;">
+      <img src="{{ url_for('branding', filename='parkease-logo-v2.png') }}" alt="ParkEase">
+    </button>
+    <nav>
+      <a class="{% if request.path == '/' %}active{% endif %}" href="{{ url_for('dashboard') }}"><span>📊</span><b>Dashboard</b></a>
+      <a class="{% if request.path == '/lot-map' %}active{% endif %}" href="{{ url_for('lot_map') }}"><span>🗺️</span><b>Live 3D Lot Map</b></a>
+      <a class="{% if request.path == '/anpr' %}active{% endif %}" href="{{ url_for('anpr') }}"><span>📷</span><b>ANPR Gate Monitor</b></a>
+      <a href="{{ url_for('mobile_scanner') }}" target="_blank" style="border-left: 3px solid #00f0ff;"><span>📱</span><b>Mobile Cam Node</b></a>
+      <a class="{% if request.path == '/slots' %}active{% endif %}" href="{{ url_for('slots') }}"><span>🅿️</span><b>Slot Management</b></a>
+      <a class="{% if request.path == '/reservations' %}active{% endif %}" href="{{ url_for('reservations') }}"><span>📅</span><b>Reservations</b></a>
+      {% if current_user and current_user.role == 'administrator' %}
+      <a class="{% if request.path == '/pricing' %}active{% endif %}" href="{{ url_for('pricing') }}"><span>🏷️</span><b>Pricing Engine</b></a>
+      {% endif %}
+      <a class="{% if request.path in ['/billing', '/sessions'] %}active{% endif %}" href="{{ url_for('billing') }}"><span>💳</span><b>Billing & Sessions</b></a>
+      <a class="{% if request.path == '/analytics' %}active{% endif %}" href="{{ url_for('analytics') }}"><span>📈</span><b>Analytics & Trends</b></a>
+      <a class="{% if request.path == '/settlement' %}active{% endif %}" href="{{ url_for('settlement') }}"><span>🧾</span><b>Shift Settlement</b></a>
+      <a class="{% if request.path == '/hardware' %}active{% endif %}" href="{{ url_for('hardware') }}"><span>⚡</span><b>IoT Hardware Status</b></a>
+      <a class="{% if request.path == '/audit-logs' %}active{% endif %}" href="{{ url_for('audit_logs') }}"><span>📋</span><b>Audit Logs</b></a>
+      <a class="{% if request.path == '/vehicles' %}active{% endif %}" href="{{ url_for('vehicles') }}"><span>🚗</span><b>Vehicle Registry</b></a>
+      {% if current_user and current_user.role == 'administrator' %}
+      <a class="{% if request.path.startswith('/admin/users') %}active{% endif %}" href="{{ url_for('users') }}"><span>👥</span><b>Role/User Admin</b></a>
+      {% endif %}
+    </nav>
+    <div class="operator">
+      <span class="avatar">{{ current_user.display_name[:2]|upper if current_user else 'PE' }}</span>
+      <div><b>{{ current_user.display_name if current_user else 'Operator' }}</b><small>{{ (current_user.role|title) if current_user else 'Staff' }}</small></div>
+      <i class="online-dot" title="Online"></i>
+    </div>
+  </aside>
+
+  <!-- Main Management Viewport -->
+  <main class="management-main">
+    <header class="management-header">
+      <div>
+        <p class="eyebrow">{% block eyebrow %}MANAGEMENT & OPERATIONS{% endblock %}</p>
+        <h1 class="page-title">{% block page_title %}ParkEase Module{% endblock %}</h1>
+      </div>
+      <div class="header-actions">
+        <span class="live"><i></i> SYSTEM ACTIVE</span>
+        <span id="clock" class="digital-clock"></span>
+        <a href="{{ url_for('dashboard') }}" class="icon-btn" title="Back to Command Center" style="text-decoration:none;display:flex;align-items:center;justify-content:center;">📊</a>
+        <form action="{{ url_for('logout') }}" method="post" style="margin:0;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button class="icon-btn signout" type="submit" aria-label="Sign out" title="Sign Out">Sign Out</button>
+        </form>
+      </div>
+    </header>
+
     {% for category, message in get_flashed_messages(with_categories=true) %}
-    <p class="flash {{ category }}">{{ message }}</p>
+    <div class="mgmt-flash {{ category }}">
+      <i>{{ '✓' if category == 'success' else '⚠️' }}</i>
+      <span>{{ message }}</span>
+    </div>
     {% endfor %}
-    {% block content %}{% endblock %}
+
+    <div class="management-content">
+      {% block content %}{% endblock %}
+    </div>
   </main>
+
+  <script>
+    function updateMgmtClock() {
+      const el = document.getElementById('clock');
+      if (el) {
+        el.textContent = new Intl.DateTimeFormat('en-IN', {
+          hour: '2-digit', minute: '2-digit', second: '2-digit'
+        }).format(new Date());
+      }
+    }
+    updateMgmtClock();
+    setInterval(updateMgmtClock, 1000);
+
+    // Sidebar collapse toggle
+    document.querySelector('#sidebarToggle')?.addEventListener('click', () => {
+      document.querySelector('#sidebar').classList.toggle('collapsed');
+      document.body.classList.toggle('sidebar-collapsed');
+    });
+  </script>
 </body>
 </html>

@@ -1,1 +1,128 @@
-{% extends 'management_base.html' %}{% block content %}<header><p>VEHICLE REGISTRY</p><h1>Registered vehicles</h1></header><section class="grid"><form class="card" method="post"><input type="hidden" name="csrf_token" value="{{csrf_token}}"><h2>Add vehicle</h2><label>Registration number<input name="registration_number" required placeholder="UP14 AB 1234"></label><label>Type<input name="vehicle_type" placeholder="Car"></label><button>Register vehicle</button></form><section class="card"><h2>{{vehicles|length}} vehicles</h2><table><tr><th>Registration</th><th>Type</th></tr>{% for vehicle in vehicles %}<tr><td>{{vehicle.registration_number}}</td><td>{{vehicle.vehicle_type or '—'}}</td></tr>{% else %}<tr><td colspan="2">No vehicles registered.</td></tr>{% endfor %}</table></section></section>{% endblock %}
+{% extends 'management_base.html' %}
+
+{% block title %}Vehicle Registry & Fleet Directory · ParkEase{% endblock %}
+{% block eyebrow %}FLEET & OPTICAL IDENTIFICATION{% endblock %}
+{% block page_title %}Vehicle Registry & <span>Fleet Directory</span>{% endblock %}
+
+{% block content %}
+<!-- Top Stats Ribbon -->
+<div class="mgmt-stats-ribbon">
+  <div class="stat-chip">
+    <span class="stat-label">Registered Fleet</span>
+    <strong class="stat-value cyan">{{ vehicles|length }}</strong>
+    <small class="stat-desc">Authorized vehicle plates</small>
+    <i class="stat-icon">🚗</i>
+  </div>
+  <div class="stat-chip">
+    <span class="stat-label">Fast-Pass Eligible</span>
+    <strong class="stat-value green">{{ vehicles|length }}</strong>
+    <small class="stat-desc">Instant ANPR recognition</small>
+    <i class="stat-icon">⚡</i>
+  </div>
+  <div class="stat-chip">
+    <span class="stat-label">Indian RTO Standards</span>
+    <strong class="stat-value">100%</strong>
+    <small class="stat-desc">State & Bharat (BH) formats</small>
+    <i class="stat-icon">🇮🇳</i>
+  </div>
+  <div class="stat-chip">
+    <span class="stat-label">Access Gate</span>
+    <strong class="stat-value amber">ONLINE</strong>
+    <small class="stat-desc">Barrier relay 01 ready</small>
+    <i class="stat-icon">📷</i>
+  </div>
+</div>
+
+<section class="grid">
+  <!-- Left Card: Add Vehicle -->
+  <div class="card">
+    <div class="card-header">
+      <h2>🚗 Register Vehicle</h2>
+      <span class="badge-count">NEW</span>
+    </div>
+    <form method="post" class="mgmt-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+      <div class="form-group">
+        <label for="regNumberInput">Vehicle Registration Plate</label>
+        <input id="regNumberInput" name="registration_number" required placeholder="e.g. UP14AB1234, DL04CA8821, 22BH1234AA" style="text-transform:uppercase;font-family:var(--font-mono);font-weight:700;letter-spacing:1px;">
+        <span class="form-hint">Standard Indian MoRTH or Bharat Series plate</span>
+      </div>
+
+      <div class="form-group">
+        <label for="vehicleTypeSelect">Vehicle Classification</label>
+        <select id="vehicleTypeSelect" name="vehicle_type">
+          <option value="Sedan">🚗 Sedan / Compact</option>
+          <option value="SUV">🚙 SUV / MUV</option>
+          <option value="EV">⚡ Electric Vehicle (EV)</option>
+          <option value="Commercial">🚚 Commercial / Freight</option>
+          <option value="Two-Wheeler">🛵 Two-Wheeler / Bike</option>
+        </select>
+        <span class="form-hint">Enables appropriate slot allocation & tariff</span>
+      </div>
+
+      <button type="submit" class="btn-primary" style="margin-top:8px;">
+        ⚡ Register & Authorize Gate
+      </button>
+    </form>
+  </div>
+
+  <!-- Right Card: Vehicles Directory Table -->
+  <div class="card">
+    <div class="card-header">
+      <h2>📋 Registered Vehicles Directory</h2>
+      <span class="badge-count">{{ vehicles|length }} UNITS</span>
+    </div>
+
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>HSRP Plate</th>
+            <th>Classification</th>
+            <th>ANPR Readiness</th>
+            <th style="text-align:right;">Operations</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for vehicle in vehicles %}
+          <tr>
+            <td>
+              <div class="plate-tag">
+                <span class="ind">IND</span>
+                <span>{{ vehicle.registration_number }}</span>
+              </div>
+            </td>
+            <td>
+              {% set vt = vehicle.vehicle_type or 'Sedan' %}
+              <span style="font-weight:600;display:inline-flex;align-items:center;gap:6px;">
+                {% if vt == 'EV' %}⚡ EV Fast-Charge
+                {% elif vt == 'SUV' %}🚙 SUV
+                {% elif vt == 'Commercial' %}🚚 Commercial
+                {% elif vt == 'Two-Wheeler' %}🛵 Two-Wheeler
+                {% else %}🚗 Sedan
+                {% endif %}
+              </span>
+            </td>
+            <td>
+              <span class="status-pill active"><i></i> VERIFIED</span>
+            </td>
+            <td style="text-align:right;">
+              <a href="/anpr" style="color:var(--cyan);text-decoration:none;font-size:12px;font-weight:700;background:rgba(0,240,255,0.08);padding:6px 12px;border-radius:6px;border:1px solid rgba(0,240,255,0.25);">
+                Gate Action ↗
+              </a>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="4" style="text-align:center;padding:32px;color:var(--text-dim);">
+              No vehicles registered in the fleet database yet.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}
