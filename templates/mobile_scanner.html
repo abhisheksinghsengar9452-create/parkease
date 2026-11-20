@@ -188,6 +188,20 @@
     </button>
   </div>
 
+  <!-- Person with Disability (PwD) Option Switch -->
+  <div style="padding:10px 16px;background:#051322;border-bottom:1px solid var(--card-border);display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span style="font-size:22px;">♿</span>
+      <div>
+        <div style="font-size:13px;font-weight:800;color:#38bdf8;">Person with Disability (PwD)</div>
+        <div style="font-size:11px;color:var(--muted);">Allocates dedicated Accessible parking bay</div>
+      </div>
+    </div>
+    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin:0;">
+      <input type="checkbox" id="mobileIsDisabled" style="width:20px;height:20px;accent-color:#38bdf8;cursor:pointer;">
+    </label>
+  </div>
+
   <!-- HTTP fallback warning for browsers blocking getUserMedia on non-HTTPS -->
   <div class="http-fallback-banner" id="httpBanner">
     💡 Phone browser blocked live video over local Wi-Fi HTTP. Use <b>"Snap with Phone Camera"</b> below!
@@ -220,6 +234,12 @@
         <span style="font-size:12px;color:var(--green);font-weight:800;" id="confScore">98.5% CONF</span>
       </div>
       <div class="plate-display" id="plateText">DL04CA8821</div>
+      <div id="plateTypeTag" style="text-align:center;font-size:11px;font-weight:800;padding:4px 8px;border-radius:4px;margin-bottom:6px;background:rgba(255,255,255,0.08);color:#fff;">
+        🚗 WHITE PLATE · PETROL / DIESEL
+      </div>
+      <div id="pwdAlertTag" style="display:none;text-align:center;font-size:11px;font-weight:800;padding:4px 8px;border-radius:4px;margin-bottom:6px;background:rgba(56,189,248,0.15);color:#38bdf8;border:1px solid #38bdf8;">
+        ♿ PERSON WITH DISABILITY (PwD) · ACCESSIBLE BAY PRIORITY
+      </div>
       <div class="rto-badge">
         <span>State: <b id="rtoState">Delhi NCT</b></span>
         <span>Office: <b id="rtoOffice">Janakpuri</b></span>
@@ -385,6 +405,8 @@
       formData.append('direction', currentDirection);
       formData.append('csrf_token', csrfToken);
       formData.append('mobile_token', mobileToken);
+      const isPwd = document.getElementById('mobileIsDisabled')?.checked;
+      formData.append('is_disabled', isPwd ? 'true' : 'false');
 
       try {
         const resp = await fetch('/api/anpr/mobile-scan', {
@@ -405,6 +427,43 @@
           resultCard.style.display = 'block';
           plateText.textContent = data.plate || 'Plate Not Detected';
           confScore.textContent = (data.confidence || 0) + '% CONF';
+
+          // Apply Indian Number Plate Color Styles
+          const pTag = document.getElementById('plateTypeTag');
+          if (data.plate_color === 'green') {
+            plateText.style.background = '#047857';
+            plateText.style.color = '#ffffff';
+            plateText.style.borderColor = '#10b981';
+            if (pTag) {
+              pTag.textContent = '⚡ GREEN PLATE · ELECTRIC VEHICLE (EV)';
+              pTag.style.color = '#10b981';
+              pTag.style.background = 'rgba(16,185,129,0.2)';
+            }
+          } else if (data.plate_color === 'yellow') {
+            plateText.style.background = '#eab308';
+            plateText.style.color = '#000000';
+            plateText.style.borderColor = '#facc15';
+            if (pTag) {
+              pTag.textContent = '🚖 YELLOW PLATE · COMMERCIAL TRANSPORT';
+              pTag.style.color = '#facc15';
+              pTag.style.background = 'rgba(234,179,8,0.25)';
+            }
+          } else {
+            plateText.style.background = '#f8fafc';
+            plateText.style.color = '#0f172a';
+            plateText.style.borderColor = '#94a3b8';
+            if (pTag) {
+              pTag.textContent = '🚗 WHITE PLATE · PETROL / DIESEL (STANDARD BAY)';
+              pTag.style.color = '#e2e8f0';
+              pTag.style.background = 'rgba(148,163,184,0.2)';
+            }
+          }
+
+          const pwdAlert = document.getElementById('pwdAlertTag');
+          if (pwdAlert) {
+            pwdAlert.style.display = isPwd ? 'block' : 'none';
+          }
+
           if (data.rto && data.rto.is_valid) {
             rtoState.textContent = data.rto.state || 'India';
             rtoOffice.textContent = data.rto.rto_office || data.rto.category || 'Standard Plate';

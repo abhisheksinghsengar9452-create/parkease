@@ -143,26 +143,51 @@
         <label>Or Manual Registration Plate
           <input name="manual_plate" id="manualPlateInput" placeholder="e.g. DL04CA8821, 22BH1234AA">
         </label>
+        <div style="margin:10px 0;padding:10px 14px;background:rgba(56,189,248,0.08);border:1px solid rgba(56,189,248,0.25);border-radius:8px;">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#38bdf8;cursor:pointer;margin:0;">
+            <input type="checkbox" name="is_disabled" id="anprIsDisabled" value="1" style="width:18px;height:18px;accent-color:#38bdf8;cursor:pointer;">
+            ♿ Person with Disability (PwD / Dedicated Accessible Bay)
+          </label>
+          <span style="display:block;font-size:11px;color:#94a3b8;margin-top:3px;margin-left:26px;">Reserves and allocates priority Accessible bays (non-disabled vehicles prohibited).</span>
+        </div>
         <button type="submit">Process Gate Action</button>
       </form>
 
       {% if anpr_result %}
       <div class="scan-result" style="margin-top:20px;">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
-          <span class="plate" style="font-size:24px;">{{ anpr_result.plate }}</span>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <!-- Indian Number Plate Color Rendering -->
+            {% if anpr_result.plate_color == 'green' %}
+            <div style="background:#047857;color:#fff;border:3px solid #10b981;border-radius:8px;padding:8px 18px;font-family:monospace;font-size:24px;font-weight:900;letter-spacing:2px;box-shadow:0 0 16px rgba(16,185,129,0.4);">
+              {{ anpr_result.plate }}
+            </div>
+            <span style="background:rgba(16,185,129,0.15);color:#10b981;border:1px solid #10b981;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:800;">⚡ GREEN PLATE · ELECTRIC VEHICLE (EV)</span>
+            {% elif anpr_result.plate_color == 'yellow' %}
+            <div style="background:#eab308;color:#000;border:3px solid #facc15;border-radius:8px;padding:8px 18px;font-family:monospace;font-size:24px;font-weight:900;letter-spacing:2px;box-shadow:0 0 16px rgba(234,179,8,0.4);">
+              {{ anpr_result.plate }}
+            </div>
+            <span style="background:rgba(234,179,8,0.15);color:#facc15;border:1px solid #facc15;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:800;">🚖 YELLOW PLATE · COMMERCIAL TRANSPORT</span>
+            {% else %}
+            <div style="background:#f8fafc;color:#0f172a;border:3px solid #94a3b8;border-radius:8px;padding:8px 18px;font-family:monospace;font-size:24px;font-weight:900;letter-spacing:2px;box-shadow:0 0 16px rgba(255,255,255,0.25);">
+              {{ anpr_result.plate }}
+            </div>
+            <span style="background:rgba(148,163,184,0.15);color:#e2e8f0;border:1px solid #94a3b8;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:800;">🚗 WHITE PLATE · PRIVATE VEHICLE (PETROL / DIESEL)</span>
+            {% endif %}
+          </div>
           <span style="color:#10b981;font-weight:700;font-size:16px;">{{ '%.1f'|format(anpr_result.confidence) }}% confidence</span>
         </div>
-        <small style="display:block;margin:6px 0;">Raw OCR: {{ anpr_result.raw_text or '—' }}{% if anpr_result.requires_review %} · <b style="color:#f59e0b;">Manual Review Required</b>{% endif %}</small>
+        <small style="display:block;margin:8px 0;color:#94a3b8;">Raw OCR: {{ anpr_result.raw_text or '—' }}{% if anpr_result.requires_review %} · <b style="color:#f59e0b;">Manual Review Required</b>{% endif %} · Allocation: <b style="color:#00f0ff;">{{ anpr_result.suggested_slot_type|upper if anpr_result.suggested_slot_type else 'STANDARD' }} BAYS ONLY</b></small>
 
         <!-- Indian RTO Decoder Information Card -->
         {% if anpr_result.rto and anpr_result.rto.is_valid %}
         <div style="background:#061422;border:1px solid #14283b;padding:14px;border-radius:8px;margin:12px 0;">
-          <b style="color:#00f0ff;font-size:13px;">🇮🇳 Indian RTO State & Series Decoder</b>
+          <b style="color:#00f0ff;font-size:13px;">🇮🇳 Indian RTO State, Series & Plate Color Decoder</b>
           <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:10px;margin-top:8px;font-size:12px;">
             <div><span style="color:#64748b;">Jurisdiction:</span> <b style="display:block;">{{ anpr_result.rto.state }}</b></div>
             <div><span style="color:#64748b;">Registering Office:</span> <b style="display:block;">{{ anpr_result.rto.rto_office }}</b></div>
-            <div><span style="color:#64748b;">Classification:</span> <b style="display:block;">{{ anpr_result.rto.category }}</b></div>
-            <div><span style="color:#64748b;">Plate HSRP:</span> <b style="display:block;color:#38bdf8;">{{ anpr_result.rto.plate_type }}</b></div>
+            <div><span style="color:#64748b;">Vehicle Category:</span> <b style="display:block;">{{ anpr_result.rto.category }}</b></div>
+            <div><span style="color:#64748b;">Fuel / Plate Code:</span> <b style="display:block;color:#38bdf8;">{{ anpr_result.rto.plate_type }}</b></div>
           </div>
         </div>
         {% endif %}
@@ -187,9 +212,18 @@
         {% elif direction != 'exit' %}
         <form class="ticket-form" action="{{ url_for('issue_anpr_ticket') }}" method="post" style="margin-top:14px;">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="plate_color" value="{{ anpr_result.plate_color or 'white' }}">
+          <input type="hidden" name="vehicle_type" value="{{ anpr_result.vehicle_type or '' }}">
           <label>Confirmed Vehicle Registration
-            <input name="plate" value="{{ anpr_result.plate if anpr_result.plate != 'No valid plate found' else '' }}" required>
+            <input name="plate" id="confirmedPlateInput" value="{{ anpr_result.plate if anpr_result.plate != 'No valid plate found' else '' }}" required>
           </label>
+          <div style="margin:10px 0;padding:10px 14px;background:rgba(56,189,248,0.08);border:1px solid rgba(56,189,248,0.25);border-radius:8px;">
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#38bdf8;cursor:pointer;margin:0;">
+              <input type="checkbox" name="is_disabled" id="confirmIsDisabled" value="1" style="width:18px;height:18px;accent-color:#38bdf8;cursor:pointer;">
+              ♿ Person with Disability (PwD / Assign Priority Bay)
+            </label>
+            <span style="display:block;font-size:11px;color:#94a3b8;margin-top:3px;margin-left:26px;">Prioritizes dedicated Accessible bays. Normal Petrol/Diesel vehicles cannot take disabled bays.</span>
+          </div>
           <button type="submit">
             {% if anpr_result.requires_review %}Confirm Plate & Print Ticket{% else %}Generate IN Ticket & Open Barrier{% endif %}
           </button>
@@ -498,6 +532,16 @@
         if (scan.rto && scan.rto.is_valid) {
           rtoText = `${scan.rto.state} · ${scan.rto.rto_office || scan.rto.category} · ` + rtoText;
         }
+        if (scan.plate_color === 'green') {
+          rtoText = '⚡ [GREEN PLATE EV] · ' + rtoText;
+        } else if (scan.plate_color === 'yellow') {
+          rtoText = '🚖 [YELLOW PLATE TRANSPORT] · ' + rtoText;
+        } else {
+          rtoText = '🚗 [WHITE PLATE PETROL/DIESEL] · ' + rtoText;
+        }
+        if (scan.is_disabled) {
+          rtoText = '♿ [PERSON WITH DISABILITY / PwD] · ' + rtoText;
+        }
         document.getElementById('bannerRtoText').textContent = rtoText;
         
         const thumb = document.getElementById('bannerThumbImg');
@@ -518,6 +562,12 @@
       if (confirmedInput && scan.plate) {
         confirmedInput.value = scan.plate;
       }
+      if (scan.is_disabled) {
+        const d1 = document.getElementById('anprIsDisabled');
+        if (d1) d1.checked = true;
+        const d2 = document.getElementById('confirmIsDisabled');
+        if (d2) d2.checked = true;
+      }
 
       // If mobile modal is open, flash confirmation inside
       const modal = document.querySelector('#mobileCamModal');
@@ -532,12 +582,22 @@
       const confirmedInput = document.querySelector('input[name="plate"]');
       if (confirmedForm && confirmedInput) {
         confirmedInput.value = activeMobileScan.plate;
+        if (activeMobileScan.is_disabled) {
+          const d2 = document.getElementById('confirmIsDisabled');
+          if (d2) d2.checked = true;
+        }
+        const pc = confirmedForm.querySelector('input[name="plate_color"]');
+        if (pc && activeMobileScan.plate_color) pc.value = activeMobileScan.plate_color;
         confirmedForm.submit();
         return;
       }
       const manualInput = document.querySelector('input[name="manual_plate"]');
       if (manualInput) {
         manualInput.value = activeMobileScan.plate;
+        if (activeMobileScan.is_disabled) {
+          const d1 = document.getElementById('anprIsDisabled');
+          if (d1) d1.checked = true;
+        }
         const form = manualInput.closest('form');
         if (form) form.submit();
       }

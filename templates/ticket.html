@@ -19,6 +19,12 @@
       <div><dt>Vehicle Plate</dt><dd><b>{{ parking_session.vehicle.registration_number }}</b></dd></div>
       <div><dt>Assigned Bay</dt><dd class="slot">{{ parking_session.slot.slot_code if parking_session.slot else 'Unassigned' }}</dd></div>
       <div><dt>Zone / Type</dt><dd>{{ parking_session.slot.zone if parking_session.slot and parking_session.slot.zone else 'Zone A' }} ({{ (parking_session.slot.slot_type if parking_session.slot and parking_session.slot.slot_type else 'Standard')|title }})</dd></div>
+      {% if parking_session.vehicle and parking_session.vehicle.vehicle_type %}
+      <div><dt>Vehicle Class</dt><dd>{{ parking_session.vehicle.vehicle_type }}</dd></div>
+      {% endif %}
+      {% if parking_session.notes %}
+      <div><dt>Gate Permit</dt><dd>{{ parking_session.notes }}</dd></div>
+      {% endif %}
       <div><dt>Entry Time</dt><dd>{{ parking_session.entry_at.strftime('%d %b %Y, %I:%M %p') }}</dd></div>
     </dl>
     {% if qr_code %}

@@ -50,15 +50,16 @@
       </div>
 
       <div class="form-group">
-        <label for="vehicleTypeSelect">Vehicle Classification</label>
+        <label for="vehicleTypeSelect">Vehicle Classification & Plate Standard</label>
         <select id="vehicleTypeSelect" name="vehicle_type">
-          <option value="Sedan">🚗 Sedan / Compact</option>
+          <option value="Petrol / Diesel (Private)">🚗 Petrol / Diesel Private (White Plate)</option>
+          <option value="Electric Vehicle (EV)">⚡ Electric Vehicle EV (Green Plate)</option>
+          <option value="Commercial Transport">🚖 Commercial Transport (Yellow Plate)</option>
+          <option value="Accessible / PwD">♿ Person with Disability (PwD / Priority Bay)</option>
           <option value="SUV">🚙 SUV / MUV</option>
-          <option value="EV">⚡ Electric Vehicle (EV)</option>
-          <option value="Commercial">🚚 Commercial / Freight</option>
           <option value="Two-Wheeler">🛵 Two-Wheeler / Bike</option>
         </select>
-        <span class="form-hint">Enables appropriate slot allocation & tariff</span>
+        <span class="form-hint">MoRTH Indian plate color & bay allocation rule</span>
       </div>
 
       <button type="submit" class="btn-primary" style="margin-top:8px;">
@@ -94,13 +95,14 @@
               </div>
             </td>
             <td>
-              {% set vt = vehicle.vehicle_type or 'Sedan' %}
+              {% set vt = vehicle.vehicle_type or 'Petrol / Diesel' %}
               <span style="font-weight:600;display:inline-flex;align-items:center;gap:6px;">
-                {% if vt == 'EV' %}⚡ EV Fast-Charge
-                {% elif vt == 'SUV' %}🚙 SUV
-                {% elif vt == 'Commercial' %}🚚 Commercial
-                {% elif vt == 'Two-Wheeler' %}🛵 Two-Wheeler
-                {% else %}🚗 Sedan
+                {% if 'Accessible' in vt or 'PwD' in vt %}♿ <span style="color:#38bdf8;">Accessible / PwD</span>
+                {% elif 'EV' in vt or 'Electric' in vt %}⚡ <span style="color:#10b981;">EV (Green Plate)</span>
+                {% elif 'Commercial' in vt or 'Transport' in vt %}🚖 <span style="color:#facc15;">Transport (Yellow Plate)</span>
+                {% elif 'SUV' in vt %}🚙 SUV
+                {% elif 'Two-Wheeler' in vt %}🛵 Two-Wheeler
+                {% else %}🚗 <span style="color:#e2e8f0;">Petrol / Diesel (White Plate)</span>
                 {% endif %}
               </span>
             </td>

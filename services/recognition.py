@@ -49,6 +49,51 @@ class RecognitionResult:
     requires_review: bool
     bounding_box: list[float] | None = None
     rto_info: dict | None = None
+    plate_color: str = "white"
+    plate_color_name: str = "White HSRP (Private / Petrol / Diesel)"
+    vehicle_type: str = "Petrol / Diesel (Private)"
+    suggested_slot_type: str = "standard"
+
+
+def detect_plate_color(crop_bgr) -> tuple[str, str, float]:
+    """Detect Indian Number Plate background color according to MoRTH standards:
+    - Green: Electric Vehicles (EV)
+    - Yellow: Commercial / Transport Vehicles (Taxis, Cabs, Buses, Trucks)
+    - White: Normal / Private Passenger Vehicles (Petrol, Diesel, CNG)
+    """
+    if crop_bgr is None or not hasattr(crop_bgr, "size") or crop_bgr.size == 0:
+        return "white", "White HSRP (Private / Petrol / Diesel)", 0.0
+
+    try:
+        import cv2
+        import numpy as np
+    except ImportError:
+        return "white", "White HSRP (Private / Petrol / Diesel)", 0.0
+
+    try:
+        hsv = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2HSV)
+        total_pixels = max(1, crop_bgr.shape[0] * crop_bgr.shape[1])
+
+        # 1. Green mask (EV): H in [35, 88], S in [40, 255], V in [40, 255]
+        green_mask = cv2.inRange(hsv, np.array([35, 40, 40], dtype=np.uint8), np.array([88, 255, 255], dtype=np.uint8))
+        green_ratio = cv2.countNonZero(green_mask) / total_pixels
+
+        # 2. Yellow mask (Commercial Transport): H in [12, 34], S in [45, 255], V in [60, 255]
+        yellow_mask = cv2.inRange(hsv, np.array([12, 45, 60], dtype=np.uint8), np.array([34, 255, 255], dtype=np.uint8))
+        yellow_ratio = cv2.countNonZero(yellow_mask) / total_pixels
+
+        # 3. White / Neutral mask (Petrol/Diesel Private): low saturation, high brightness
+        white_mask = cv2.inRange(hsv, np.array([0, 0, 100], dtype=np.uint8), np.array([180, 50, 255], dtype=np.uint8))
+        white_ratio = cv2.countNonZero(white_mask) / total_pixels
+
+        if green_ratio >= 0.14 and green_ratio > yellow_ratio:
+            return "green", "Green HSRP (Electric Vehicle - EV)", float(green_ratio)
+        elif yellow_ratio >= 0.14 and yellow_ratio > green_ratio:
+            return "yellow", "Yellow HSRP (Commercial / Transport Vehicle)", float(yellow_ratio)
+        else:
+            return "white", "White HSRP (Private / Petrol / Diesel)", float(white_ratio)
+    except Exception:
+        return "white", "White HSRP (Private / Petrol / Diesel)", 0.0
 
 
 class DuplicateSuppressor:
@@ -63,13 +108,28 @@ class DuplicateSuppressor:
         return False
 
 
-def parse_ocr_candidate(text: str, confidence: float, review_threshold: float = 85.0, bounding_box: list[float] | None = None) -> RecognitionResult:
+def parse_ocr_candidate(text: str, confidence: float, review_threshold: float = 85.0, bounding_box: list[float] | None = None, detected_color: str | None = None) -> RecognitionResult:
     try:
         plate = normalize_plate(text)
     except ValueError:
         plate = None
-    rto = decode_indian_plate(plate or text)
-    return RecognitionResult(text, plate, confidence, plate is None or confidence < review_threshold, bounding_box, rto)
+    rto = decode_indian_plate(plate or text, detected_color=detected_color)
+    p_color = rto.get("plate_color", "white")
+    p_name = rto.get("plate_type", "White HSRP (Private)")
+    v_type = rto.get("category", "Private Passenger Vehicle")
+    s_slot = rto.get("allowed_slot_type", "standard")
+    return RecognitionResult(
+        text,
+        plate,
+        confidence,
+        plate is None or confidence < review_threshold,
+        bounding_box,
+        rto,
+        plate_color=p_color,
+        plate_color_name=p_name,
+        vehicle_type=v_type,
+        suggested_slot_type=s_slot
+    )
 
 
 def _clean_ocr_text(text: str) -> str:
@@ -120,8 +180,8 @@ def _extract_indian_plate_from_text(text: str) -> str | None:
     return None
 
 
-def select_plate_candidate(candidates: list[tuple[object, str, float]], review_threshold: float = 85.0) -> RecognitionResult:
-    """Join OCR fragments, reject sticker noise, and prefer valid Indian plates."""
+def select_plate_candidate(candidates: list[tuple[object, str, float]], review_threshold: float = 85.0, image_bgr: object = None) -> RecognitionResult:
+    """Join OCR fragments, reject sticker noise, and prefer valid Indian plates with optical color analysis."""
     if not candidates:
         return RecognitionResult("", None, 0.0, True)
 
@@ -194,6 +254,7 @@ def select_plate_candidate(candidates: list[tuple[object, str, float]], review_t
         # Pick the valid Indian plate with the highest confidence
         raw, confidence, plate, matched_boxes = max(indian_matches, key=lambda item: item[1])
         b_box = None
+        detected_color = None
         if matched_boxes:
             try:
                 all_pts = [pt for b in matched_boxes if hasattr(b, '__iter__') for pt in b]
@@ -203,16 +264,37 @@ def select_plate_candidate(candidates: list[tuple[object, str, float]], review_t
                     max_x = max(float(pt[0]) for pt in all_pts)
                     max_y = max(float(pt[1]) for pt in all_pts)
                     b_box = [round(min_x, 1), round(min_y, 1), round(max_x - min_x, 1), round(max_y - min_y, 1)]
+
+                    if image_bgr is not None and hasattr(image_bgr, "shape"):
+                        h_img, w_img = image_bgr.shape[:2]
+                        pad_x = max(4, int((max_x - min_x) * 0.12))
+                        pad_y = max(4, int((max_y - min_y) * 0.15))
+                        y1 = max(0, int(min_y - pad_y))
+                        y2 = min(h_img, int(max_y + pad_y))
+                        x1 = max(0, int(min_x - pad_x))
+                        x2 = min(w_img, int(max_x + pad_x))
+                        crop = image_bgr[y1:y2, x1:x2]
+                        detected_color, _, _ = detect_plate_color(crop)
             except Exception:
                 b_box = None
-        rto = decode_indian_plate(plate)
+
+        rto = decode_indian_plate(plate, detected_color=detected_color)
+        p_color = rto.get("plate_color", "white")
+        p_name = rto.get("plate_type", "White HSRP (Private)")
+        v_type = rto.get("category", "Private Passenger Vehicle")
+        s_slot = rto.get("allowed_slot_type", "standard")
+
         return RecognitionResult(
             raw_text=raw,
             normalized_plate=plate,
             confidence=round(confidence, 2),
             requires_review=(confidence < review_threshold),
             bounding_box=b_box,
-            rto_info=rto
+            rto_info=rto,
+            plate_color=p_color,
+            plate_color_name=p_name,
+            vehicle_type=v_type,
+            suggested_slot_type=s_slot
         )
 
     # If no valid Indian plate matched, filter out pure sticker words from being chosen
@@ -229,7 +311,11 @@ def select_plate_candidate(candidates: list[tuple[object, str, float]], review_t
         confidence=round(confidence, 2),
         requires_review=True,
         bounding_box=None,
-        rto_info=None
+        rto_info=None,
+        plate_color="white",
+        plate_color_name="White HSRP (Private / Petrol / Diesel)",
+        vehicle_type="Petrol / Diesel (Private)",
+        suggested_slot_type="standard"
     )
 
 
@@ -253,9 +339,9 @@ class EasyOcrRecognizer:
 
         self._reader = self._reader or easyocr.Reader(["en"], gpu=False, verbose=False)
 
-        # Pass 1: Original Image
+        # Pass 1: Original Image with optical plate color analysis
         raw_candidates = self._reader.readtext(image)
-        result = select_plate_candidate(raw_candidates, self.review_threshold)
+        result = select_plate_candidate(raw_candidates, self.review_threshold, image_bgr=image)
 
         # Pass 2: If no valid plate detected in Pass 1, apply CLAHE contrast enhancement
         if not result.normalized_plate:
@@ -265,7 +351,7 @@ class EasyOcrRecognizer:
                 enhanced = clahe.apply(gray)
                 enhanced_candidates = self._reader.readtext(enhanced)
                 all_candidates = raw_candidates + enhanced_candidates
-                enhanced_result = select_plate_candidate(all_candidates, self.review_threshold)
+                enhanced_result = select_plate_candidate(all_candidates, self.review_threshold, image_bgr=image)
                 if enhanced_result.normalized_plate:
                     return enhanced_result
             except Exception:

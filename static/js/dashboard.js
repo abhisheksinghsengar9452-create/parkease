@@ -354,10 +354,13 @@ function renderDashboard() {
 async function performInstantCheckIn(plateInput = '') {
   const cameraBox = document.querySelector('.camera');
   cameraBox.classList.add('scanning-active');
+  const isPwd = !!document.querySelector('#quickIsDisabled')?.checked;
   try {
-    const result = await apiRequest('/api/anpr/instant-entry', 'POST', {plate: plateInput});
+    const result = await apiRequest('/api/anpr/instant-entry', 'POST', {plate: plateInput, is_disabled: isPwd});
     notify(result.message);
     document.querySelector('#anprQuickPlate').value = '';
+    const pwdBox = document.querySelector('#quickIsDisabled');
+    if (pwdBox) pwdBox.checked = false;
     await fetchState();
   } catch (err) {
     notify(err.message, true);

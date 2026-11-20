@@ -156,8 +156,19 @@ def create_app(config=None):
      from services.rto_decoder import decode_indian_plate
      if image and image.filename:
       scan=recognizer.recognize_bytes(image.read())
-      rto_data=decode_indian_plate(scan.normalized_plate)
-      result={'raw_text':scan.raw_text,'plate':scan.normalized_plate or 'No valid plate found','confidence':scan.confidence,'requires_review':scan.requires_review,'bounding_box':scan.bounding_box,'rto':rto_data}
+      rto_data=scan.rto_info or decode_indian_plate(scan.normalized_plate, detected_color=scan.plate_color)
+      result={
+       'raw_text': scan.raw_text,
+       'plate': scan.normalized_plate or 'No valid plate found',
+       'confidence': scan.confidence,
+       'requires_review': scan.requires_review,
+       'bounding_box': scan.bounding_box,
+       'rto': rto_data,
+       'plate_color': scan.plate_color,
+       'plate_color_name': scan.plate_color_name,
+       'vehicle_type': scan.vehicle_type,
+       'suggested_slot_type': scan.suggested_slot_type
+      }
       normalized_plate=scan.normalized_plate
       if scan.requires_review or scan.confidence < 85.0:
        with transaction():
@@ -165,8 +176,19 @@ def create_app(config=None):
      if manual_plate:
       from services.plates import normalize_plate
       normalized_plate=normalize_plate(manual_plate)
-      rto_data=decode_indian_plate(normalized_plate)
-      result={'raw_text':manual_plate,'plate':normalized_plate,'confidence':100.0,'requires_review':False,'rto':rto_data}
+      manual_color = request.form.get('plate_color') or None
+      rto_data=decode_indian_plate(normalized_plate, detected_color=manual_color)
+      result={
+       'raw_text': manual_plate,
+       'plate': normalized_plate,
+       'confidence': 100.0,
+       'requires_review': False,
+       'rto': rto_data,
+       'plate_color': rto_data.get('plate_color', 'white'),
+       'plate_color_name': rto_data.get('plate_type', 'White HSRP (Private)'),
+       'vehicle_type': rto_data.get('category', 'Private Passenger Vehicle'),
+       'suggested_slot_type': rto_data.get('allowed_slot_type', 'standard')
+      }
      if direction == 'exit' and normalized_plate:
       vehicle=db.session.scalar(db.select(Vehicle).where(Vehicle.normalized_registration==normalized_plate))
       active_session=db.session.scalar(db.select(ParkingSession).where(ParkingSession.vehicle_id==vehicle.id,ParkingSession.status.in_(('active','awaiting_payment')))) if vehicle else None
@@ -186,8 +208,11 @@ def create_app(config=None):
  @required
  def issue_anpr_ticket():
   plate=request.form.get('plate','').strip().upper()
+  is_disabled = request.form.get('is_disabled') in ('1', 'true', 'on', True)
+  plate_color = request.form.get('plate_color') or None
+  vehicle_type = request.form.get('vehicle_type') or None
   try:
-   parking_session=create_entry(plate)
+   parking_session=create_entry(plate, is_disabled=is_disabled, plate_color=plate_color, vehicle_type=vehicle_type)
    record_audit(g.user.id,'parking.entry_created','parking_session',str(parking_session.id))
    db.session.commit()
    return redirect(url_for('parking_ticket',session_reference=parking_session.session_reference))
@@ -479,6 +504,10 @@ def create_app(config=None):
     requires_review=result.requires_review,
     bounding_box=result.bounding_box,
     rto=result.rto_info,
+    plate_color=result.plate_color,
+    plate_color_name=result.plate_color_name,
+    vehicle_type=result.vehicle_type,
+    suggested_slot_type=result.suggested_slot_type,
     review_log_id=rec_id
    )
   except (ValueError,RuntimeError) as error: return jsonify(error=str(error)),503
@@ -532,23 +561,32 @@ def create_app(config=None):
  def instant_anpr_entry():
   data=request.get_json(silent=True) or request.form
   plate=(data.get('plate') or '').strip().upper()
+  is_disabled = data.get('is_disabled') in (True, 'true', '1', 'on')
+  plate_color = data.get('plate_color') or None
+  vehicle_type = data.get('vehicle_type') or None
   if not plate:
    import random
    digits=f'{random.randint(1000,9999)}'
    chars=''.join(random.choices('ABCDEFGHJKLMNPQRSTUVWXYZ',k=2))
    plate=f'DL01{chars}{digits}'
   try:
-   session=create_entry(plate)
+   session=create_entry(plate, is_disabled=is_disabled, plate_color=plate_color, vehicle_type=vehicle_type)
    record_audit(g.user.id,'parking.entry_created','parking_session',str(session.id))
    db.session.commit()
+   slot_code = session.slot.slot_code if session.slot else 'A-01'
+   slot_type = getattr(session.slot, 'slot_type', 'standard') if session.slot else 'standard'
+   v_type = session.vehicle.vehicle_type if session.vehicle else 'Standard'
    return jsonify(
     status='ok',
     plate=plate,
     confidence=97.4,
     session_reference=session.session_reference,
-    slot=session.slot.slot_code if session.slot else 'A-01',
+    slot=slot_code,
+    slot_type=slot_type,
+    vehicle_type=v_type,
+    is_disabled=is_disabled,
     entry_time=session.entry_at.strftime('%H:%M:%S'),
-    message=f'Vehicle {plate} recognized! Assigned bay {session.slot.slot_code if session.slot else "A-01"}.'
+    message=f'Vehicle {plate} ({v_type}) recognized! Assigned bay {slot_code} ({slot_type.upper()}).'
    )
   except ValueError as err:
    return jsonify(status='error',message=str(err)),400
@@ -656,9 +694,10 @@ def create_app(config=None):
   if not image_bytes:
    return jsonify(status='error', message='No image file or camera frame received.'), 400
   try:
+   is_disabled = (request.form.get('is_disabled') in ('true', '1', 'on', True)) or (((request.get_json(silent=True) or {}).get('is_disabled')) in (True, 'true', '1', 'on'))
    scan = recognizer.recognize_bytes(image_bytes)
    from services.rto_decoder import decode_indian_plate
-   rto_data = decode_indian_plate(scan.normalized_plate) if scan.normalized_plate else None
+   rto_data = scan.rto_info or (decode_indian_plate(scan.normalized_plate, detected_color=scan.plate_color) if scan.normalized_plate else None)
    thumb_b64 = None
    try:
     import cv2, numpy as np
@@ -681,6 +720,11 @@ def create_app(config=None):
     'rto': rto_data,
     'direction': direction,
     'thumbnail': thumb_b64,
+    'plate_color': scan.plate_color,
+    'plate_color_name': scan.plate_color_name,
+    'vehicle_type': scan.vehicle_type,
+    'suggested_slot_type': scan.suggested_slot_type,
+    'is_disabled': is_disabled,
     'time': datetime.now().strftime('%H:%M:%S')
    }
    LATEST_MOBILE_SCANS.append(scan_record)
@@ -705,6 +749,11 @@ def create_app(config=None):
     confidence=round(float(scan.confidence or 0.0), 1),
     rto=rto_data,
     direction=direction,
+    plate_color=scan.plate_color,
+    plate_color_name=scan.plate_color_name,
+    vehicle_type=scan.vehicle_type,
+    suggested_slot_type=scan.suggested_slot_type,
+    is_disabled=is_disabled,
     message='Mobile camera scan processed and broadcasted to main station!'
    )
   except Exception as e:
