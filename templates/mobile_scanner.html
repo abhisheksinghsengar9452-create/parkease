@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>ParkEase Mobile ANPR Camera Node</title>
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <meta name="mobile-token" content="{{ mobile_token }}">
+  <style>
+    :root {
+      --bg: #03080f;
+      --card: #071524;
+      --card-border: #14283d;
+      --cyan: #00f0ff;
+      --green: #10b981;
+      --amber: #f59e0b;
+      --red: #ef4444;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
+    body { background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; }
+    
+    /* Top Bar */
+    .top-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px; background: rgba(7, 21, 36, 0.95);
+      backdrop-filter: blur(8px); border-bottom: 1px solid var(--card-border);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .brand { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 16px; letter-spacing: -0.5px; }
+    .brand span { color: var(--cyan); }
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 6px; font-size: 11px;
+      font-weight: 700; background: rgba(16, 185, 129, 0.15); color: var(--green);
+      padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .pulse-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); animation: pulse 1.8s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.85); } }
+
+    /* Direction Selector */
+    .direction-switch {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+      padding: 10px 16px; background: #050d18; border-bottom: 1px solid var(--card-border);
+    }
+    .dir-btn {
+      padding: 10px; border-radius: 8px; border: 1px solid #1e3a5f;
+      background: #091a2e; color: var(--muted); font-size: 13px; font-weight: 700;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+      transition: all 0.2s;
+    }
+    .dir-btn.active.entry { background: rgba(16, 185, 129, 0.2); border-color: var(--green); color: #fff; }
+    .dir-btn.active.exit { background: rgba(239, 68, 68, 0.2); border-color: var(--red); color: #fff; }
+
+    /* Main Viewfinder Area */
+    .viewfinder-wrapper {
+      position: relative; width: 100%; aspect-ratio: 4/3; max-height: 48vh;
+      background: #000; overflow: hidden; display: flex; align-items: center; justify-content: center;
+    }
+    #cameraVideo { width: 100%; height: 100%; object-fit: cover; }
+    #captureCanvas { display: none; }
+
+    /* HUD Reticle Overlay */
+    .hud-overlay {
+      position: absolute; inset: 0; pointer-events: none;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    .target-box {
+      width: 78%; height: 42%; border: 2px dashed rgba(0, 240, 255, 0.6);
+      border-radius: 8px; position: relative; box-shadow: 0 0 15px rgba(0, 240, 255, 0.15);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .target-box::before, .target-box::after {
+      content: ''; position: absolute; width: 14px; height: 14px;
+      border-color: var(--cyan); border-style: solid;
+    }
+    .target-box::before { top: -2px; left: -2px; border-width: 3px 0 0 3px; }
+    .target-box::after { bottom: -2px; right: -2px; border-width: 0 3px 3px 0; }
+    .laser-line {
+      position: absolute; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+      box-shadow: 0 0 10px var(--cyan);
+      animation: scanLaser 2.2s ease-in-out infinite alternate;
+    }
+    @keyframes scanLaser {
+      0% { top: 8%; opacity: 0.3; }
+      50% { opacity: 1; }
+      100% { top: 90%; opacity: 0.3; }
+    }
+    .guide-text {
+      position: absolute; bottom: 8px; font-size: 10px; font-weight: 700;
+      letter-spacing: 1px; color: rgba(0, 240, 255, 0.85); text-transform: uppercase;
+      background: rgba(3, 8, 15, 0.7); padding: 2px 8px; border-radius: 4px;
+    }
+
+    /* Fallback / HTTP Camera Notice */
+    .http-fallback-banner {
+      display: none; padding: 12px 16px; background: rgba(245, 158, 11, 0.12);
+      border-bottom: 1px solid rgba(245, 158, 11, 0.3); font-size: 12px; color: #fde68a;
+      text-align: center;
+    }
+
+    /* Action Controls */
+    .controls-panel {
+      padding: 16px; display: flex; flex-direction: column; gap: 12px; flex: 1;
+    }
+    .shutter-row {
+      display: flex; align-items: center; justify-content: space-around; gap: 14px;
+    }
+    .btn-action-round {
+      width: 48px; height: 48px; border-radius: 50%; background: #0e2238;
+      border: 1px solid var(--card-border); color: #fff; font-size: 18px;
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+    }
+    .btn-shutter-main {
+      width: 76px; height: 76px; border-radius: 50%;
+      background: linear-gradient(135deg, #00f0ff, #0284c7);
+      border: 4px solid #fff; box-shadow: 0 0 24px rgba(0, 240, 255, 0.5);
+      color: #03080f; font-size: 26px; display: flex; align-items: center;
+      justify-content: center; cursor: pointer; transition: transform 0.1s, box-shadow 0.2s;
+    }
+    .btn-shutter-main:active { transform: scale(0.92); box-shadow: 0 0 12px rgba(0, 240, 255, 0.8); }
+
+    /* Scan Result Card */
+    .result-card {
+      background: var(--card); border: 1px solid var(--card-border); border-radius: 12px;
+      padding: 14px; display: none; animation: slideUp 0.25s ease-out; margin-top: auto;
+    }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+    .plate-display {
+      background: #000; border: 2px solid var(--cyan); border-radius: 8px;
+      padding: 8px 12px; font-family: "Courier New", Courier, monospace;
+      font-size: 26px; font-weight: 800; letter-spacing: 2px; text-align: center;
+      color: #fff; margin: 8px 0; text-shadow: 0 0 10px rgba(0, 240, 255, 0.6);
+    }
+    .rto-badge {
+      display: flex; justify-content: space-between; font-size: 11px;
+      color: var(--muted); padding: 4px 2px; border-top: 1px solid rgba(255,255,255,0.06);
+    }
+    .rto-badge b { color: var(--cyan); }
+    .sync-confirm {
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      background: rgba(16, 185, 129, 0.15); border: 1px solid var(--green);
+      color: #a7f3d0; font-size: 12px; font-weight: 700; padding: 6px; border-radius: 6px;
+      margin-top: 8px;
+    }
+
+    /* Loading Spinner */
+    .scanning-loader {
+      display: none; align-items: center; justify-content: center; gap: 8px;
+      font-size: 13px; font-weight: 700; color: var(--cyan); padding: 10px;
+    }
+    .spinner {
+      width: 18px; height: 18px; border: 3px solid rgba(0, 240, 255, 0.2);
+      border-top-color: var(--cyan); border-radius: 50%; animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Native Camera Fallback Button */
+    .native-cam-btn {
+      background: linear-gradient(135deg, #0284c7, #0369a1); border: 0; color: #fff;
+      padding: 12px 18px; border-radius: 10px; font-size: 14px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;
+      box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35); width: 100%;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Bar -->
+  <header class="top-bar">
+    <div class="brand">
+      <span>🅿️</span> ParkEase <span>Mobile Node</span>
+    </div>
+    <div class="status-badge" id="netStatus">
+      <div class="pulse-dot"></div> Live Linked
+    </div>
+  </header>
+
+  <!-- Direction Selector -->
+  <div class="direction-switch">
+    <button type="button" class="dir-btn active entry" id="btnEntry" onclick="setDirection('entry')">
+      🚗 IN (Entry Gate)
+    </button>
+    <button type="button" class="dir-btn exit" id="btnExit" onclick="setDirection('exit')">
+      🚙 OUT (Exit Gate)
+    </button>
+  </div>
+
+  <!-- HTTP fallback warning for browsers blocking getUserMedia on non-HTTPS -->
+  <div class="http-fallback-banner" id="httpBanner">
+    💡 Phone browser blocked live video over local Wi-Fi HTTP. Use <b>"Snap with Phone Camera"</b> below!
+  </div>
+
+  <!-- Camera Viewfinder -->
+  <div class="viewfinder-wrapper" id="viewWrapper">
+    <video id="cameraVideo" autoplay playsinline muted></video>
+    <canvas id="captureCanvas"></canvas>
+    
+    <div class="hud-overlay">
+      <div class="target-box">
+        <div class="laser-line"></div>
+        <div class="guide-text">Align Number Plate</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action Controls -->
+  <main class="controls-panel">
+
+    <div class="scanning-loader" id="scanLoader">
+      <div class="spinner"></div> OCR Neural Engine Analyzing Vehicle...
+    </div>
+
+    <!-- Live Result Display -->
+    <div class="result-card" id="resultCard">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:11px;color:var(--muted);font-weight:700;">RECOGNIZED PLATE</span>
+        <span style="font-size:12px;color:var(--green);font-weight:800;" id="confScore">98.5% CONF</span>
+      </div>
+      <div class="plate-display" id="plateText">DL04CA8821</div>
+      <div class="rto-badge">
+        <span>State: <b id="rtoState">Delhi NCT</b></span>
+        <span>Office: <b id="rtoOffice">Janakpuri</b></span>
+      </div>
+      <div class="sync-confirm">
+        <span>⚡</span> Synced Instantly to Desktop Station!
+      </div>
+    </div>
+
+    <!-- Main Shutter & Trigger Controls -->
+    <div class="shutter-row">
+      <button type="button" class="btn-action-round" onclick="toggleAutoScan()" id="btnAutoScan" title="Toggle Auto-Scan">
+        ⏱️
+      </button>
+
+      <button type="button" class="btn-shutter-main" onclick="captureAndScan()" id="btnShutter" title="Snap Plate">
+        📸
+      </button>
+
+      <button type="button" class="btn-action-round" onclick="switchCameraFacing()" id="btnFlipCam" title="Flip Camera">
+        🔄
+      </button>
+    </div>
+
+    <div style="text-align:center;font-size:11px;color:var(--muted);">
+      Point camera at vehicle license plate & tap 📸 to scan.
+    </div>
+
+    <!-- 1-Tap Native Phone Camera Button (Always works 100% on iOS & Android regardless of HTTP/HTTPS) -->
+    <div style="margin-top:6px;">
+      <input type="file" id="phoneCameraInput" accept="image/*" capture="environment" style="display:none;" onchange="handleNativePhotoUpload(this)">
+      <button type="button" class="native-cam-btn" onclick="document.getElementById('phoneCameraInput').click()">
+        📷 Snap with Full Phone Camera (High Res)
+      </button>
+    </div>
+
+  </main>
+
+  <script>
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const mobileToken = document.querySelector('meta[name="mobile-token"]')?.getAttribute('content') || '';
+    const video = document.getElementById('cameraVideo');
+    const canvas = document.getElementById('captureCanvas');
+    const resultCard = document.getElementById('resultCard');
+    const scanLoader = document.getElementById('scanLoader');
+    const plateText = document.getElementById('plateText');
+    const confScore = document.getElementById('confScore');
+    const rtoState = document.getElementById('rtoState');
+    const rtoOffice = document.getElementById('rtoOffice');
+    const btnAutoScan = document.getElementById('btnAutoScan');
+    const httpBanner = document.getElementById('httpBanner');
+
+    let currentDirection = 'entry';
+    let currentStream = null;
+    let facingMode = 'environment';
+    let autoScanTimer = null;
+    let isProcessing = false;
+
+    // Web Audio Synthesizer Beeps
+    function playBeep(freq = 880, duration = 0.12) {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.frequency.value = freq;
+        osc.type = 'sine';
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    function playSuccessChime() {
+      playBeep(880, 0.1);
+      setTimeout(() => playBeep(1320, 0.18), 110);
+      if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
+    }
+
+    function setDirection(dir) {
+      currentDirection = dir;
+      document.getElementById('btnEntry').className = 'dir-btn ' + (dir === 'entry' ? 'active entry' : '');
+      document.getElementById('btnExit').className = 'dir-btn ' + (dir === 'exit' ? 'active exit' : '');
+    }
+
+    // Camera Stream Initialization
+    async function startCamera() {
+      if (currentStream) {
+        currentStream.getTracks().forEach(t => t.stop());
+      }
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        httpBanner.style.display = 'block';
+        return;
+      }
+      try {
+        const constraints = {
+          video: {
+            facingMode: { ideal: facingMode },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          },
+          audio: false
+        };
+        currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+        video.srcObject = currentStream;
+        video.play();
+        httpBanner.style.display = 'none';
+      } catch (err) {
+        console.warn('getUserMedia error (often due to non-HTTPS LAN context):', err);
+        httpBanner.style.display = 'block';
+      }
+    }
+
+    function switchCameraFacing() {
+      facingMode = (facingMode === 'environment') ? 'user' : 'environment';
+      startCamera();
+    }
+
+    // Capture from Live Video Stream
+    async function captureAndScan() {
+      if (isProcessing) return;
+
+      if (!video.videoWidth || !currentStream) {
+        // Fallback to native camera input
+        document.getElementById('phoneCameraInput').click();
+        return;
+      }
+
+      isProcessing = true;
+      scanLoader.style.display = 'flex';
+      playBeep(440, 0.08); // Shutter audio click
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      canvas.toBlob(async (blob) => {
+        if (!blob) {
+          isProcessing = false;
+          scanLoader.style.display = 'none';
+          return;
+        }
+        await uploadScanBlob(blob);
+      }, 'image/jpeg', 0.85);
+    }
+
+    // Native Camera Photo Upload
+    function handleNativePhotoUpload(input) {
+      if (!input.files || !input.files[0]) return;
+      isProcessing = true;
+      scanLoader.style.display = 'flex';
+      playBeep(440, 0.08);
+      uploadScanBlob(input.files[0]);
+    }
+
+    // Upload & OCR Request
+    async function uploadScanBlob(blob) {
+      const formData = new FormData();
+      formData.append('image', blob, 'mobile_capture.jpg');
+      formData.append('direction', currentDirection);
+      formData.append('csrf_token', csrfToken);
+      formData.append('mobile_token', mobileToken);
+
+      try {
+        const resp = await fetch('/api/anpr/mobile-scan', {
+          method: 'POST',
+          headers: {
+            'X-CSRFToken': csrfToken,
+            'X-Mobile-Token': mobileToken
+          },
+          body: formData
+        });
+
+        const data = await resp.json();
+        isProcessing = false;
+        scanLoader.style.display = 'none';
+
+        if (data.status === 'ok') {
+          playSuccessChime();
+          resultCard.style.display = 'block';
+          plateText.textContent = data.plate || 'Plate Not Detected';
+          confScore.textContent = (data.confidence || 0) + '% CONF';
+          if (data.rto && data.rto.is_valid) {
+            rtoState.textContent = data.rto.state || 'India';
+            rtoOffice.textContent = data.rto.rto_office || data.rto.category || 'Standard Plate';
+          } else {
+            rtoState.textContent = 'Indian MoRTH';
+            rtoOffice.textContent = 'Standard';
+          }
+        } else {
+          alert('Scan notice: ' + (data.message || 'No license plate found in image. Please try closer.'));
+        }
+      } catch (err) {
+        isProcessing = false;
+        scanLoader.style.display = 'none';
+        console.error('Mobile upload error:', err);
+        alert('Network error communicating with main system. Ensure both devices are on same Wi-Fi.');
+      }
+    }
+
+    // Auto-Scan interval toggle
+    function toggleAutoScan() {
+      if (autoScanTimer) {
+        clearInterval(autoScanTimer);
+        autoScanTimer = null;
+        btnAutoScan.style.background = '#0e2238';
+        btnAutoScan.style.borderColor = 'var(--card-border)';
+      } else {
+        btnAutoScan.style.background = 'rgba(0, 240, 255, 0.25)';
+        btnAutoScan.style.borderColor = 'var(--cyan)';
+        autoScanTimer = setInterval(() => {
+          if (!isProcessing) captureAndScan();
+        }, 2800);
+      }
+    }
+
+    // Start on load
+    window.addEventListener('DOMContentLoaded', () => {
+      startCamera();
+    });
+  </script>
+</body>
+</html>

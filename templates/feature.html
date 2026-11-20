@@ -56,9 +56,33 @@
     <section class="card upload">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
         <h2>ANPR Gate Optical Scanner</h2>
-        <div style="display:flex;gap:8px;">
-          <button type="button" id="btnToggleCam" style="background:#0c7180;color:#fff;border:0;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">📹 Start Live Camera Feed</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button type="button" onclick="document.querySelector('#mobileCamModal').showModal()" style="background:linear-gradient(135deg, #00f0ff, #0284c7);color:#03080f;border:0;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 0 14px rgba(0,240,255,0.35);">📱 Connect Phone Camera</button>
+          <button type="button" id="btnToggleCam" style="background:#0c7180;color:#fff;border:0;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">📹 Laptop Webcam</button>
           <button type="button" onclick="document.querySelector('#lostTicketDialog').showModal()" style="background:#475569;color:#fff;border:0;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">🎫 Lost Ticket Dispute</button>
+        </div>
+      </div>
+
+      <!-- Live Mobile Camera Alert Banner (Auto-updates when phone scans) -->
+      <div id="mobileScanBanner" style="display:none;margin:16px 0;padding:14px 18px;background:rgba(16,185,129,0.12);border:1px solid #10b981;border-radius:10px;animation:slideDown 0.3s ease-out;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+          <div style="display:flex;align-items:center;gap:14px;">
+            <div style="font-size:28px;">📱</div>
+            <div>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#10b981;box-shadow:0 0 8px #10b981;"></span>
+                <span style="font-size:11px;color:#10b981;font-weight:800;letter-spacing:0.5px;">REMOTE MOBILE CAMERA SCAN RECEIVED</span>
+              </div>
+              <div style="font-size:22px;font-weight:900;color:#fff;font-family:monospace;letter-spacing:1.5px;margin:2px 0;" id="bannerPlateText">UP14AB1234</div>
+              <div style="font-size:12px;color:#94a3b8;" id="bannerRtoText">Uttar Pradesh · Ghaziabad RTO · 98.4% Confidence</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <img id="bannerThumbImg" src="" style="width:75px;height:48px;object-fit:cover;border-radius:6px;border:1px solid #1e3a5f;display:none;">
+            <button type="button" id="btnApplyMobileScan" onclick="applyMobileScanToForm()" style="background:#10b981;color:#050c14;border:0;padding:10px 16px;border-radius:6px;font-weight:800;font-size:13px;cursor:pointer;box-shadow:0 0 14px rgba(16,185,129,0.4);">
+              ⚡ Auto-Fill Plate & Issue Ticket
+            </button>
+          </div>
         </div>
       </div>
 
@@ -206,6 +230,37 @@
       <div style="display:flex;gap:10px;margin-top:16px;">
         <button type="button" onclick="resolveLostTicket()" style="background:#10b981;color:#050c14;font-weight:700;border:0;padding:10px 16px;border-radius:6px;cursor:pointer;">Confirm & Release Barrier</button>
         <button type="button" onclick="document.querySelector('#lostTicketDialog').close()" style="background:#334155;color:#fff;border:0;padding:10px 16px;border-radius:6px;cursor:pointer;">Cancel</button>
+      </div>
+    </dialog>
+
+    <!-- Mobile Camera QR Connection Modal -->
+    <dialog id="mobileCamModal" style="background:#071424;border:1px solid #1e3a5f;border-radius:14px;color:#f1f5f9;padding:24px;max-width:440px;width:92%;box-shadow:0 25px 50px rgba(0,0,0,0.85);margin:auto;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h3 style="margin:0;font-size:18px;display:flex;align-items:center;gap:8px;">📱 Connect Smartphone Camera</h3>
+        <button type="button" onclick="document.querySelector('#mobileCamModal').close()" style="background:transparent;border:0;color:#94a3b8;font-size:22px;cursor:pointer;line-height:1;">&times;</button>
+      </div>
+      <p style="font-size:12px;color:#94a3b8;margin-bottom:16px;">
+        Scan this QR code on your phone to open the <b>Wireless Mobile ANPR Scanner</b>. Point the phone at any car plate, and it will appear on this desktop screen automatically!
+      </p>
+
+      <div style="background:#fff;padding:12px;border-radius:10px;text-align:center;width:fit-content;margin:0 auto 16px auto;box-shadow:0 0 24px rgba(0,240,255,0.25);">
+        <img id="mobileQrImg" src="data:image/png;base64,{{ mobile_qr_b64 }}" alt="Scan with Phone" style="width:210px;height:210px;display:block;">
+      </div>
+
+      <div style="background:#03080f;padding:10px 12px;border-radius:8px;border:1px solid #14283b;margin-bottom:14px;">
+        <div style="color:#64748b;font-size:10px;font-weight:700;margin-bottom:4px;">DIRECT PHONE URL (Connect to same Wi-Fi / Hotspot)</div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input type="text" id="mobileScannerLinkInput" readonly value="{{ mobile_scanner_url }}" style="flex:1;background:transparent;border:0;color:#00f0ff;font-family:monospace;font-size:11px;outline:none;">
+          <button type="button" onclick="navigator.clipboard.writeText(document.getElementById('mobileScannerLinkInput').value); alert('Copied mobile scanner URL to clipboard!');" style="background:#1e3a5f;border:0;color:#fff;padding:5px 10px;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer;">Copy</button>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;padding-top:10px;border-top:1px solid #14283b;">
+        <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#10b981;font-weight:700;">
+          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#10b981;box-shadow:0 0 8px #10b981;"></span>
+          Station Listening for Scans
+        </div>
+        <a href="{{ mobile_scanner_url }}" target="_blank" style="font-size:12px;color:#00f0ff;text-decoration:none;font-weight:600;">Open on this PC ↗</a>
       </div>
     </dialog>
     {% endif %}
@@ -371,6 +426,93 @@
       } catch (e) {
         alert(e.message);
       }
+    }
+
+    // ==========================================
+    // Real-Time Mobile Phone Camera Sync Poller
+    // ==========================================
+    let lastMobileScanId = '';
+    let activeMobileScan = null;
+
+    async function pollMobileScans() {
+      try {
+        const res = await fetch('/api/anpr/latest-mobile-scan?since=' + encodeURIComponent(lastMobileScanId));
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.status === 'ok' && data.scan && data.scan.id !== lastMobileScanId) {
+          lastMobileScanId = data.scan.id;
+          activeMobileScan = data.scan;
+          triggerMobileScanReceived(data.scan);
+        }
+      } catch(e) {}
+    }
+
+    function triggerMobileScanReceived(scan) {
+      // Play high-tech station chime
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+        osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.12); // A5
+        gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.35);
+      } catch(e) {}
+
+      // Reveal banner
+      const banner = document.getElementById('mobileScanBanner');
+      if (banner) {
+        banner.style.display = 'block';
+        document.getElementById('bannerPlateText').textContent = scan.plate || scan.raw_text || 'Plate Detected';
+        let rtoText = (scan.confidence || 0) + '% Confidence';
+        if (scan.rto && scan.rto.is_valid) {
+          rtoText = `${scan.rto.state} · ${scan.rto.rto_office || scan.rto.category} · ` + rtoText;
+        }
+        document.getElementById('bannerRtoText').textContent = rtoText;
+        
+        const thumb = document.getElementById('bannerThumbImg');
+        if (scan.thumbnail) {
+          thumb.src = scan.thumbnail;
+          thumb.style.display = 'block';
+        }
+      }
+
+      // Auto-fill form inputs
+      const manualInput = document.querySelector('input[name="manual_plate"]');
+      if (manualInput && scan.plate) {
+        manualInput.value = scan.plate;
+        manualInput.style.borderColor = '#10b981';
+        manualInput.style.boxShadow = '0 0 12px rgba(16,185,129,0.35)';
+      }
+      const confirmedInput = document.querySelector('input[name="plate"]');
+      if (confirmedInput && scan.plate) {
+        confirmedInput.value = scan.plate;
+      }
+
+      // If mobile modal is open, flash confirmation inside
+      const modal = document.querySelector('#mobileCamModal');
+      if (modal && modal.open) {
+        modal.close();
+      }
+    }
+
+    function applyMobileScanToForm() {
+      if (!activeMobileScan || !activeMobileScan.plate) return;
+      const manualInput = document.querySelector('input[name="manual_plate"]');
+      if (manualInput) {
+        manualInput.value = activeMobileScan.plate;
+        const form = manualInput.closest('form');
+        if (form) form.submit();
+      }
+    }
+
+    // Start background poller if on ANPR page
+    if (document.querySelector('#btnOpenMobileModal') || document.querySelector('#mobileCamModal')) {
+      setInterval(pollMobileScans, 1200);
     }
   </script>
 </body>

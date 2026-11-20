@@ -9,3 +9,5 @@ waitress>=3.0,<4.0
 opencv-python>=5.0,<6.0
 easyocr>=1.7,<2.0
 numpy>=2.0,<3.0
+qrcode>=7.4,<9.0
+pillow>=10.0,<12.0

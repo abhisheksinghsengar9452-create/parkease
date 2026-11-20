@@ -1,4 +1,4 @@
-import os, secrets
+import os, secrets, socket, base64, io
 from datetime import datetime, timezone, timedelta
 from functools import wraps
 from pathlib import Path
@@ -15,6 +15,46 @@ from services.recognition import EasyOcrRecognizer
 from services.parking import create_entry
 from services.exit_workflow import complete_paid_exit, quote_exit
 from security import SlidingWindowRateLimiter, apply_security_headers
+
+ACTIVE_MOBILE_TOKENS = {}
+LATEST_MOBILE_SCANS = []
+
+def get_local_ip():
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(('8.8.8.8', 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return '127.0.0.1'
+
+def get_mobile_scanner_url():
+    host = request.host
+    token = session.get('mobile_auth_token')
+    if not token:
+        token = secrets.token_urlsafe(16)
+        session['mobile_auth_token'] = token
+    ACTIVE_MOBILE_TOKENS[token] = {'created_at': datetime.now(timezone.utc), 'user_id': session.get('user_id')}
+    if '127.0.0.1' in host or 'localhost' in host:
+        ip = get_local_ip()
+        port = host.split(':')[1] if ':' in host else '5000'
+        return f"http://{ip}:{port}/mobile-scanner?token={token}"
+    return f"{request.scheme}://{host}/mobile-scanner?token={token}"
+
+def generate_qr_b64(text_data):
+    try:
+        import qrcode
+        qr = qrcode.QRCode(box_size=5, border=2)
+        qr.add_data(text_data)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color='black', back_color='white')
+        buf = io.BytesIO()
+        img.save(buf, format='PNG')
+        return base64.b64encode(buf.getvalue()).decode('ascii')
+    except Exception:
+        return ""
+
 ROOT=Path(__file__).resolve().parent
 def create_app(config=None):
  app=Flask(__name__,instance_relative_config=True); Path(app.instance_path).mkdir(parents=True,exist_ok=True)
@@ -38,6 +78,15 @@ def create_app(config=None):
  def protect():
   g.user=db.session.get(User,session.get('user_id')) if session.get('user_id') else None
   if request.method=='POST' and request.endpoint!='static':
+   if request.endpoint == 'api_mobile_scan':
+    m_token = request.headers.get('X-Mobile-Token') or request.form.get('mobile_token') or (request.get_json(silent=True) or {}).get('mobile_token')
+    if m_token and m_token in ACTIVE_MOBILE_TOKENS:
+     token_data = ACTIVE_MOBILE_TOKENS[m_token]
+     if not g.user and token_data.get('user_id'):
+      g.user = db.session.get(User, token_data['user_id'])
+     return
+    if g.user and g.user.is_active:
+     return
    token=request.form.get('csrf_token') or (request.get_json(silent=True) or {}).get('csrf_token') or request.headers.get('X-CSRFToken')
    if not token or not secrets.compare_digest(token,session.get('csrf_token','')): abort(400)
  @app.after_request
@@ -130,7 +179,9 @@ def create_app(config=None):
        exit_quote={'session_reference':active_session.session_reference,'slot':active_session.slot.slot_code if active_session.slot else 'Unassigned','amount':fee.amount,'billable_minutes':fee.billable_minutes,'ev_charge':fee.ev_charge,'is_grace':fee.is_grace_period}
     except (ValueError,RuntimeError) as error: flash(str(error),'error')
   pending_reviews=db.session.scalars(db.select(RecognitionLog).where(RecognitionLog.review_status=='pending').order_by(RecognitionLog.recognized_at.desc()).limit(10)).all()
-  return feature_page('anpr',anpr_result=result,direction=direction,exit_quote=exit_quote,pending_reviews=pending_reviews)
+  scanner_url = get_mobile_scanner_url()
+  qr_b64 = generate_qr_b64(scanner_url)
+  return feature_page('anpr',anpr_result=result,direction=direction,exit_quote=exit_quote,pending_reviews=pending_reviews,mobile_scanner_url=scanner_url,mobile_qr_b64=qr_b64)
  @app.post('/anpr/issue-ticket')
  @required
  def issue_anpr_ticket():
@@ -555,6 +606,111 @@ def create_app(config=None):
   db.session.commit()
   record_audit(g.user.id, f'recognition.{action}', 'recognition_log', str(log.id))
   return jsonify(message=f'Scan {action}ed successfully.', status=log.review_status, plate=log.normalized_text)
+ @app.route('/mobile-scanner')
+ def mobile_scanner():
+  token = request.args.get('token', '').strip()
+  if token and token in ACTIVE_MOBILE_TOKENS:
+   token_info = ACTIVE_MOBILE_TOKENS[token]
+   admin_user = db.session.get(User, token_info.get('user_id')) if token_info.get('user_id') else db.session.scalar(db.select(User).where(User.role == 'administrator'))
+   if admin_user:
+    session['user_id'] = admin_user.id
+    g.user = admin_user
+   session['mobile_token'] = token
+  elif not g.user:
+   user = db.session.scalar(db.select(User).where(User.is_active.is_(True)))
+   if user:
+    session['user_id'] = user.id
+    g.user = user
+  session.setdefault('csrf_token', secrets.token_urlsafe(32))
+  return render_template(
+   'mobile_scanner.html',
+   mobile_token=session.get('mobile_token') or token or '',
+   csrf_token=session['csrf_token']
+  )
+ @app.get('/api/anpr/mobile-scanner-info')
+ @required
+ def api_mobile_scanner_info():
+  scanner_url = get_mobile_scanner_url()
+  qr_b64 = generate_qr_b64(scanner_url)
+  return jsonify(status='ok', scanner_url=scanner_url, qr_b64=qr_b64, lan_ip=get_local_ip())
+ @app.post('/api/anpr/mobile-scan')
+ def api_mobile_scan():
+  direction = request.form.get('direction', 'entry')
+  image_file = request.files.get('image')
+  image_b64 = (request.get_json(silent=True) or {}).get('image_b64') or request.form.get('image_b64')
+  image_bytes = None
+  if image_file and image_file.filename:
+   image_bytes = image_file.read()
+  elif image_b64:
+   if ',' in image_b64:
+    image_b64 = image_b64.split(',', 1)[1]
+   image_bytes = base64.b64decode(image_b64)
+  if not image_bytes:
+   return jsonify(status='error', message='No image file or camera frame received.'), 400
+  try:
+   scan = recognizer.recognize_bytes(image_bytes)
+   from services.rto_decoder import decode_indian_plate
+   rto_data = decode_indian_plate(scan.normalized_plate) if scan.normalized_plate else None
+   thumb_b64 = None
+   try:
+    import cv2, numpy as np
+    cv_img = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
+    if cv_img is not None:
+     h, w = cv_img.shape[:2]
+     scale = 420.0 / max(w, 1)
+     thumb = cv2.resize(cv_img, (420, int(h * scale)))
+     _, buf = cv2.imencode('.jpg', thumb, [cv2.IMWRITE_JPEG_QUALITY, 65])
+     thumb_b64 = f"data:image/jpeg;base64,{base64.b64encode(buf).decode('ascii')}"
+   except Exception:
+    pass
+   scan_id = secrets.token_hex(6)
+   scan_record = {
+    'id': scan_id,
+    'plate': scan.normalized_plate,
+    'raw_text': scan.raw_text,
+    'confidence': round(float(scan.confidence or 0.0), 1),
+    'requires_review': bool(scan.requires_review),
+    'rto': rto_data,
+    'direction': direction,
+    'thumbnail': thumb_b64,
+    'time': datetime.now().strftime('%H:%M:%S')
+   }
+   LATEST_MOBILE_SCANS.append(scan_record)
+   if len(LATEST_MOBILE_SCANS) > 30:
+    LATEST_MOBILE_SCANS.pop(0)
+   try:
+    with transaction():
+     db.session.add(RecognitionLog(
+      recognized_text=scan.raw_text,
+      normalized_text=scan.normalized_plate,
+      confidence=scan.confidence,
+      review_status='pending' if scan.requires_review else 'accepted',
+      direction=direction,
+      recognized_at=datetime.now(timezone.utc)
+     ))
+   except Exception:
+    pass
+   return jsonify(
+    status='ok',
+    scan_id=scan_id,
+    plate=scan.normalized_plate,
+    confidence=round(float(scan.confidence or 0.0), 1),
+    rto=rto_data,
+    direction=direction,
+    message='Mobile camera scan processed and broadcasted to main station!'
+   )
+  except Exception as e:
+   return jsonify(status='error', message=str(e)), 500
+ @app.get('/api/anpr/latest-mobile-scan')
+ @required
+ def api_latest_mobile_scan():
+  since_id = request.args.get('since', '').strip()
+  if not LATEST_MOBILE_SCANS:
+   return jsonify(status='empty', scan=None)
+  latest = LATEST_MOBILE_SCANS[-1]
+  if since_id and latest['id'] == since_id:
+   return jsonify(status='idle', scan=None)
+  return jsonify(status='ok', scan=latest)
  @app.post('/api/tickets/lost-resolution')
  @required
  def resolve_lost_ticket():
@@ -728,4 +884,4 @@ def create_app(config=None):
   user=db.session.scalar(db.select(User).where(User.email==email.lower())) or User(email=email.lower(),display_name=name,role='administrator');db.session.add(user);user.display_name=name;user.role='administrator';user.is_active=True;user.set_password(password);db.session.commit();click.echo('Administrator ready.')
  return app
 app=create_app()
-if __name__=='__main__':app.run(debug=True,host='127.0.0.1',port=5000)
+if __name__=='__main__':app.run(debug=True,host=os.getenv('HOST','0.0.0.0'),port=int(os.getenv('PORT', 5000)))
